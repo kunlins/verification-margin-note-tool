@@ -3,14 +3,16 @@ set -e
 
 cd "$(dirname "$0")"
 
-if [ ! -d ".venv" ]; then
+RUNTIME_DIR="$HOME/Library/Application Support/Prospectus Local Translator"
+VENV_PYTHON="$RUNTIME_DIR/venv/bin/python"
+SERVER_SCRIPT="$RUNTIME_DIR/local_translation_server.py"
+
+if [ ! -x "$VENV_PYTHON" ] || [ ! -f "$SERVER_SCRIPT" ]; then
   echo "Local Python environment was not found."
   echo "Please run install_local_translator.command first."
   read -r -p "Press Enter to exit..."
   exit 1
 fi
-
-source ".venv/bin/activate"
 
 SITE_URL="$(osascript <<'APPLESCRIPT'
 set dialogResult to display dialog "请输入要打开的网站地址，例如：https://your-name.github.io/verification-margin-note-tool/" default answer "" buttons {"取消", "打开"} default button "打开"
@@ -29,7 +31,7 @@ case "$SITE_URL" in
   *) SITE_URL="https://$SITE_URL" ;;
 esac
 
-STATUS_RESULT="$(python - "$SITE_URL" <<'PY'
+STATUS_RESULT="$("$VENV_PYTHON" - "$SITE_URL" <<'PY'
 import json
 import sys
 from urllib.parse import urljoin
@@ -60,7 +62,7 @@ print(json.dumps({"enabled": enabled, "message": message, "statusUrl": status_ur
 PY
 )"
 
-STATUS_ENABLED="$(python - "$STATUS_RESULT" <<'PY'
+STATUS_ENABLED="$("$VENV_PYTHON" - "$STATUS_RESULT" <<'PY'
 import json
 import sys
 print("true" if json.loads(sys.argv[1]).get("enabled") else "false")
@@ -68,7 +70,7 @@ PY
 )"
 
 if [ "$STATUS_ENABLED" != "true" ]; then
-  STATUS_MESSAGE="$(python - "$STATUS_RESULT" <<'PY'
+  STATUS_MESSAGE="$("$VENV_PYTHON" - "$STATUS_RESULT" <<'PY'
 import json
 import sys
 data = json.loads(sys.argv[1])
@@ -85,7 +87,7 @@ fi
 
 echo "Starting local translation service..."
 echo "Opening website: $SITE_URL"
-python "local_translation_server.py" --no-browser &
+nohup "$VENV_PYTHON" "$SERVER_SCRIPT" --no-browser --idle-timeout 14400 >/tmp/prospectus-local-translator.log 2>&1 &
 SERVER_PID=$!
 
 cleanup() {

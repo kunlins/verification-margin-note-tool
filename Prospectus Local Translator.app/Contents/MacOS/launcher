@@ -7,12 +7,14 @@ echo "----- $(date) -----"
 
 APP_DIR="$(cd "$(dirname "$0")/../.." && pwd -P)"
 PROJECT_DIR="$(cd "$APP_DIR/.." && pwd)"
-VENV_PYTHON="$PROJECT_DIR/.venv/bin/python"
-SERVER_SCRIPT="$PROJECT_DIR/local_translation_server.py"
+RUNTIME_DIR="$HOME/Library/Application Support/Prospectus Local Translator"
+VENV_PYTHON="$RUNTIME_DIR/venv/bin/python"
+SERVER_SCRIPT="$RUNTIME_DIR/local_translation_server.py"
 INSTALL_SCRIPT="$PROJECT_DIR/install_local_translator.command"
 
 echo "APP_DIR=$APP_DIR"
 echo "PROJECT_DIR=$PROJECT_DIR"
+echo "RUNTIME_DIR=$RUNTIME_DIR"
 echo "VENV_PYTHON=$VENV_PYTHON"
 echo "SERVER_SCRIPT=$SERVER_SCRIPT"
 
