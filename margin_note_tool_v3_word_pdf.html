@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prospectus Margin Note Tool</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --danger: #dc2626;
+      --soft: #eef2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 22px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    h1 { margin: 0 0 6px; font-size: 21px; }
+    .subtitle { color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(820px, 1fr) 470px;
+      gap: 14px;
+      padding: 14px;
+      align-items: start;
+    }
+    body.index-collapsed .layout { grid-template-columns: 1fr; }
+    body.index-collapsed .side-panel { display: none; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .toolbar {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .checkbox-field {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+    }
+    .checkbox-field input { margin: 0; }
+    .status-text {
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 18px;
+      align-self: end;
+    }
+    label { font-size: 12px; color: var(--muted); font-weight: 600; }
+    input[type="text"], input[type="number"], select, textarea {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      background: #fff;
+      color: var(--text);
+    }
+    textarea { min-height: 58px; resize: vertical; line-height: 1.42; }
+    input[type="file"] { font-size: 12px; }
+    button {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:hover { background: #f9fafb; }
+    .primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .primary:hover { background: var(--blue-dark); }
+    .danger { color: var(--danger); border-color: #fecaca; }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 14px 14px;
+    }
+    .viewer-panel {
+      overflow: auto;
+      max-height: calc(100vh - 178px);
+      padding: 16px;
+    }
+    body.index-collapsed .viewer-panel { max-height: calc(100vh - 165px); }
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 42px 20px;
+      color: var(--muted);
+      text-align: center;
+      background: #fbfdff;
+      line-height: 1.75;
+    }
+    .page-shell {
+      position: relative;
+      margin: 0 auto 24px;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+      border-radius: 4px;
+    }
+    .page-canvas {
+      display: block;
+      margin-left: 86px;
+      background: #fff;
+      cursor: crosshair;
+    }
+    .note-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 86px;
+      pointer-events: none;
+    }
+    .note-tag {
+      position: absolute;
+      left: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #111827;
+      line-height: 14px;
+      cursor: ns-resize;
+      user-select: none;
+      pointer-events: auto;
+      padding: 1px 2px;
+      border-radius: 3px;
+    }
+    .note-tag:hover { background: var(--soft); }
+    .note-bar {
+      position: absolute;
+      left: 64px;
+      width: 3px;
+      height: 30px;
+      background: #111827;
+      border-radius: 1px;
+    }
+    .page-label {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.85);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 999px;
+    }
+    .selection-rect {
+      position: absolute;
+      border: 2px solid var(--blue);
+      background: rgba(37, 99, 235, 0.12);
+      pointer-events: none;
+      display: none;
+      z-index: 6;
+    }
+    .side-panel {
+      max-height: calc(100vh - 28px);
+      overflow: auto;
+      position: sticky;
+      top: 84px;
+    }
+    .side-header {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .side-header h2 { margin: 0 0 6px; font-size: 18px; }
+    .stats { color: var(--muted); font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid var(--border); padding: 8px; vertical-align: top; }
+    th { background: #f9fafb; text-align: left; color: #374151; position: sticky; top: 0; z-index: 5; }
+    .note-id-input { width: 76px; font-weight: 700; }
+    .small-input { width: 54px; }
+    .table-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+    .table-actions button { padding: 4px 6px; font-size: 11px; }
+    .help {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+      background: #fbfdff;
+    }
+    .pill {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #e0e7ff;
+      color: #3730a3;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: #111827;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+    @media (max-width: 1200px) {
+      .layout { grid-template-columns: 1fr; }
+      .side-panel { position: static; max-height: none; }
+      .toolbar { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Prospectus Margin Note Tool</h1>
+    <div class="subtitle">上传 PDF 后，可以单击段落自动抓取整段文字，或拖拽框选任意区域生成编号。输出只保留带 margin notes 的 PDF 和 Word 验证清单。右侧 Index 可以收起，以便扩大 PDF 操作区。</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="toolbar">
+        <div class="field">
+          <label>上传 PDF</label>
+          <input id="pdfFile" type="file" accept="application/pdf" />
+        </div>
+        <div class="field">
+          <label>文字抓取模式</label>
+          <select id="captureMode">
+            <option value="paragraph" selected>单击抓取整段，拖拽框选区域</option>
+            <option value="line">单击仅抓取附近一行，拖拽框选区域</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>项目名称</label>
+          <input id="projectName" type="text" value="XX项目" />
+        </div>
+        <div class="field">
+          <label>章节名称</label>
+          <input id="sectionName" type="text" value="业务部分" />
+        </div>
+        <div class="field">
+          <label>编号前缀</label>
+          <input id="prefix" type="text" value="B" />
+        </div>
+        <div class="field">
+          <label>起始编号</label>
+          <input id="startNo" type="number" value="1" min="1" />
+        </div>
+        <div class="field">
+          <label>PDF 左侧 note X 坐标</label>
+          <input id="marginX" type="number" value="14" min="0" />
+        </div>
+        <div class="field">
+          <label>PDF note 字号</label>
+          <input id="fontSize" type="number" value="7" min="4" max="20" />
+        </div>
+        <div class="field checkbox-field">
+          <input id="autoTranslateNew" type="checkbox" checked />
+          <label for="autoTranslateNew">新 note 自动翻译</label>
+        </div>
+        <div class="field checkbox-field">
+          <input id="translateBeforeExport" type="checkbox" checked />
+          <label for="translateBeforeExport">导出前补齐翻译</label>
+        </div>
+        <div class="status-text" id="translateStatus">本机翻译：未检查</div>
+      </div>
+
+      <div class="button-row">
+        <button id="toggleIndexBtn">收起右侧 Index</button>
+        <button id="renumberBtn">按页面顺序重新编号</button>
+        <button id="checkTranslateBtn">检查本机翻译</button>
+        <button id="batchTranslateBtn">批量翻译未翻译项</button>
+        <button id="exportPdfBtn" class="primary">导出带 margin notes 的 PDF</button>
+        <button id="exportWordBtn" class="primary">导出 Word 验证清单</button>
+        <button id="clearBtn" class="danger">清空全部 notes</button>
+      </div>
+
+      <div class="viewer-panel" id="viewer">
+        <div class="empty">
+          请先上传 PDF。上传后可以单击正文段落生成 margin note，或按住鼠标拖拽框选整段、表格行、多段文字。<br />
+          生成后可以拖动左侧 note 上下调整位置。Word 导出会使用右侧 Index 中保存的原文、中文翻译、建议文件和备注。
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel side-panel">
+      <div class="side-header">
+        <div>
+          <h2>Verification Index</h2>
+          <div class="stats" id="stats">尚未生成 note。</div>
+        </div>
+        <button id="collapseSideBtn">收起</button>
+      </div>
+      <div id="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:90px">编号</th>
+              <th style="width:56px">页码</th>
+              <th>披露内容及验证需求</th>
+              <th style="width:70px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="notesBody"></tbody>
+        </table>
+      </div>
+      <div class="help">
+        <span class="pill">使用方法</span><br />
+        1. 上传 PDF。<br />
+        2. 单击普通正文，系统会尽量抓取整段。<br />
+        3. 如需精确控制范围，直接拖拽框选整段、表格行或多段文字。<br />
+        4. 右侧 Index 可收起，收起后 PDF 操作区会自动变宽。<br />
+        5. Word 清单会按照“序号、招股书披露内容、需提供文件、提供情况、公司回复/备注”的表格格式导出。<br /><br />
+        本机翻译服务启动后，系统会把圈选段落发到本机 127.0.0.1 翻译接口，中文结果会填入右侧“中文翻译”栏，导出前仍可人工修改。
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const state = {
+      pdf: null,
+      pdfArrayBuffer: null,
+      fileName: 'document.pdf',
+      pages: new Map(),
+      notes: [],
+      counter: 1,
+      scale: 1.45,
+      dragging: null,
+      selecting: null,
+      indexCollapsed: false,
+      translateReady: false,
+      translateChecking: false
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function toast(message) {
+      const el = $('toast');
+      el.textContent = message;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function translateApiBase() {
+      if (['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname)) return '';
+      return 'http://127.0.0.1:8765';
+    }
+
+    function setTranslateStatus(message, ready = false) {
+      state.translateReady = ready;
+      const el = $('translateStatus');
+      if (el) el.textContent = message;
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function baseName(name) {
+      return (name || 'document.pdf').replace(/\.pdf$/i, '');
+    }
+
+    function sanitizeFileName(value) {
+      return String(value || '验证清单')
+        .replace(/[\\/:*?"<>|]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim() || '验证清单';
+    }
+
+    function nextNoteId() {
+      const prefix = $('prefix').value.trim() || 'B';
+      const id = prefix + state.counter;
+      state.counter += 1;
+      return id;
+    }
+
+    function cleanExtractedText(text) {
+      return String(text || '')
+        .replace(/\s+/g, ' ')
+        .replace(/\s+([,.;:!?%])/g, '$1')
+        .trim();
+    }
+
+    async function checkLocalTranslator(showToast = true) {
+      if (state.translateChecking) return state.translateReady;
+      state.translateChecking = true;
+      setTranslateStatus('本机翻译：检查中...', false);
+      try {
+        const res = await fetch(translateApiBase() + '/health', { method: 'GET' });
+        if (!res.ok) throw new Error('health check failed');
+        const data = await res.json();
+        if (data.ready) {
+          setTranslateStatus('本机翻译：可用', true);
+          if (showToast) toast('本机翻译服务可用。');
+          return true;
+        }
+        setTranslateStatus('本机翻译：未安装模型', false);
+        if (showToast) toast(data.message || '本机翻译模型未安装。');
+        return false;
+      } catch (err) {
+        setTranslateStatus('本机翻译：未启动', false);
+        if (showToast) toast('本机翻译服务未启动，请先运行启动脚本。');
+        return false;
+      } finally {
+        state.translateChecking = false;
+      }
+    }
+
+    async function translateText(text) {
+      const cleanText = cleanExtractedText(text);
+      if (!cleanText) return '';
+      const res = await fetch(translateApiBase() + '/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText, source: 'en', target: 'zh' })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'translate failed');
+      return String(data.translatedText || '').trim();
+    }
+
+    async function translateNote(note, force = false) {
+      if (!note || !note.anchorText || (!force && note.chineseTranslation && note.chineseTranslation.trim())) return false;
+      note.translationStatus = 'translating';
+      updateTable(false);
+      try {
+        const translated = await translateText(note.anchorText);
+        if (translated) {
+          note.chineseTranslation = translated;
+          note.translationStatus = 'done';
+          updateTable(false);
+          return true;
+        }
+        note.translationStatus = 'empty';
+        updateTable(false);
+        return false;
+      } catch (err) {
+        console.error(err);
+        note.translationStatus = 'failed';
+        updateTable(false);
+        toast('翻译失败，请确认本机服务和模型已安装。');
+        return false;
+      }
+    }
+
+    async function batchTranslateMissing(showDoneToast = true) {
+      const targets = state.notes.filter(note => note.anchorText && !(note.chineseTranslation || '').trim());
+      if (!targets.length) {
+        if (showDoneToast) toast('没有需要补译的 note。');
+        return true;
+      }
+      const ready = state.translateReady || await checkLocalTranslator(false);
+      if (!ready) {
+        toast('本机翻译不可用，已保留“中文翻译待补充”。');
+        return false;
+      }
+      setTranslateStatus('本机翻译：正在批量翻译 ' + targets.length + ' 项...', true);
+      for (const note of targets) note.translationStatus = 'queued';
+      updateTable(false);
+      try {
+        const res = await fetch(translateApiBase() + '/translate-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: 'en',
+            target: 'zh',
+            items: targets.map(note => ({ uid: note.uid, text: note.anchorText }))
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'batch translate failed');
+        const map = new Map((data.items || []).map(item => [item.uid, item.translatedText || '']));
+        let count = 0;
+        for (const note of targets) {
+          const translated = String(map.get(note.uid) || '').trim();
+          if (translated) {
+            note.chineseTranslation = translated;
+            note.translationStatus = 'done';
+            count += 1;
+          } else {
+            note.translationStatus = 'empty';
+          }
+        }
+        setTranslateStatus('本机翻译：可用', true);
+        updateTable(false);
+        if (showDoneToast) toast('已翻译 ' + count + ' 项，可在右侧人工修改。');
+        return true;
+      } catch (err) {
+        console.error(err);
+        for (const note of targets) note.translationStatus = 'failed';
+        setTranslateStatus('本机翻译：失败', false);
+        updateTable(false);
+        toast('批量翻译失败，请检查本机服务。');
+        return false;
+      }
+    }
+
+    function joinLines(lines) {
+      let out = '';
+      for (const line of lines) {
+        const text = cleanExtractedText(line.text);
+        if (!text) continue;
+        if (!out) out = text;
+        else if (/[-‐‑‒–—]$/.test(out)) out += text;
+        else out += ' ' + text;
+      }
+      return cleanExtractedText(out);
+    }
+
+    function median(values) {
+      const arr = values.filter(v => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+      if (!arr.length) return 0;
+      const mid = Math.floor(arr.length / 2);
+      return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+    }
+
+    function extractTextLines(textContent, viewport) {
+      const items = [];
+      for (const item of textContent.items) {
+        if (!item.str || !item.str.trim()) continue;
+        const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+        const x = tx[4];
+        const baselineY = tx[5];
+        const height = Math.max(Math.abs(tx[3]) || Math.abs(item.height * viewport.scale) || 8, 4);
+        const width = Math.max(Math.abs(item.width * viewport.scale) || item.str.length * height * 0.45, 1);
+        const top = baselineY - height;
+        const bottom = baselineY + 1;
+        items.push({ text: item.str.trim(), x, y: (top + bottom) / 2, top, bottom, left: x, right: x + width, height, width });
+      }
+      items.sort((a, b) => Math.abs(a.y - b.y) > 4 ? a.y - b.y : a.left - b.left);
+      const lines = [];
+      for (const item of items) {
+        let best = null;
+        let bestDist = Infinity;
+        for (const line of lines) {
+          const tol = Math.max(4, Math.min(10, Math.max(line.height || 0, item.height) * 0.55));
+          const dist = Math.abs(line.y - item.y);
+          if (dist <= tol && dist < bestDist) { best = line; bestDist = dist; }
+        }
+        if (!best) {
+          best = { y: item.y, top: item.top, bottom: item.bottom, left: item.left, right: item.right, height: item.height, items: [] };
+          lines.push(best);
+        }
+        best.items.push(item);
+        best.top = Math.min(best.top, item.top);
+        best.bottom = Math.max(best.bottom, item.bottom);
+        best.left = Math.min(best.left, item.left);
+        best.right = Math.max(best.right, item.right);
+        best.height = Math.max(best.height, item.height);
+        best.y = best.items.reduce((sum, i) => sum + i.y, 0) / best.items.length;
+      }
+      return lines.map(line => {
+        const sortedItems = line.items.sort((a, b) => a.left - b.left);
+        return { y: line.y, top: line.top, bottom: line.bottom, xMin: line.left, xMax: line.right, height: Math.max(line.bottom - line.top, line.height), text: cleanExtractedText(sortedItems.map(i => i.text).join(' ')) };
+      }).filter(line => line.text).sort((a, b) => a.y - b.y || a.xMin - b.xMin);
+    }
+
+    function nearestLineIndex(pageData, yPx, xPx = null) {
+      if (!pageData || !pageData.textLines.length) return -1;
+      let bestIndex = -1;
+      let bestScore = Infinity;
+      for (let i = 0; i < pageData.textLines.length; i++) {
+        const line = pageData.textLines[i];
+        const yDist = Math.abs(line.y - yPx);
+        let xPenalty = 0;
+        if (xPx !== null && (xPx < line.xMin - 30 || xPx > line.xMax + 30)) xPenalty = 12;
+        const score = yDist + xPenalty;
+        if (score < bestScore) { bestScore = score; bestIndex = i; }
+      }
+      if (bestIndex < 0 || Math.abs(pageData.textLines[bestIndex].y - yPx) > 55) return -1;
+      return bestIndex;
+    }
+
+    function nearestText(pageData, yPx, xPx = null) {
+      const idx = nearestLineIndex(pageData, yPx, xPx);
+      if (idx < 0) return '';
+      return pageData.textLines[idx].text;
+    }
+
+    function bboxFromLines(lines) {
+      if (!lines || !lines.length) return null;
+      return {
+        left: Math.min(...lines.map(l => l.xMin)),
+        top: Math.min(...lines.map(l => l.top)),
+        right: Math.max(...lines.map(l => l.xMax)),
+        bottom: Math.max(...lines.map(l => l.bottom))
+      };
+    }
+
+    function paragraphSelectionAt(pageData, xPx, yPx) {
+      const lines = pageData.textLines || [];
+      const idx = nearestLineIndex(pageData, yPx, xPx);
+      if (idx < 0) return { text: '', lines: [], bbox: null };
+      const typicalHeight = median(lines.map(l => l.height)) || 12;
+      const gapThreshold = Math.max(10, typicalHeight * 1.35);
+      let start = idx;
+      let end = idx;
+      while (start > 0) {
+        const prev = lines[start - 1];
+        const cur = lines[start];
+        const gap = cur.top - prev.bottom;
+        if (gap > gapThreshold) break;
+        if (Math.abs(prev.xMin - cur.xMin) > 260 && gap > typicalHeight * 0.55) break;
+        start--;
+      }
+      while (end < lines.length - 1) {
+        const cur = lines[end];
+        const next = lines[end + 1];
+        const gap = next.top - cur.bottom;
+        if (gap > gapThreshold) break;
+        if (Math.abs(next.xMin - cur.xMin) > 260 && gap > typicalHeight * 0.55) break;
+        end++;
+      }
+      const selectedLines = lines.slice(start, end + 1);
+      return { text: joinLines(selectedLines), lines: selectedLines, bbox: bboxFromLines(selectedLines) };
+    }
+
+    function selectionFromRect(pageData, rect) {
+      const left = Math.min(rect.x1, rect.x2);
+      const right = Math.max(rect.x1, rect.x2);
+      const top = Math.min(rect.y1, rect.y2);
+      const bottom = Math.max(rect.y1, rect.y2);
+      const lines = (pageData.textLines || []).filter(line => line.bottom >= top && line.top <= bottom && line.xMax >= left && line.xMin <= right);
+      return { text: joinLines(lines), lines, bbox: lines.length ? bboxFromLines(lines) : { left, right, top, bottom } };
+    }
+
+    function centerOfSelection(selection, fallbackX, fallbackY) {
+      const bbox = selection && selection.bbox;
+      if (!bbox) return { x: fallbackX, y: fallbackY };
+      return { x: (bbox.left + bbox.right) / 2, y: (bbox.top + bbox.bottom) / 2 };
+    }
+
+    async function loadPdf(file) {
+      state.pdfArrayBuffer = await file.arrayBuffer();
+      state.fileName = file.name || 'document.pdf';
+      state.notes = [];
+      state.pages = new Map();
+      state.counter = Number($('startNo').value || 1);
+      $('viewer').innerHTML = '';
+      $('notesBody').innerHTML = '';
+      $('stats').textContent = '正在读取 PDF...';
+      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(state.pdfArrayBuffer.slice(0)) });
+      state.pdf = await loadingTask.promise;
+      for (let pageNumber = 1; pageNumber <= state.pdf.numPages; pageNumber++) await renderPage(pageNumber);
+      updateTable();
+      toast('PDF 已加载，可以开始点击或框选标注。');
+    }
+
+    async function renderPage(pageNumber) {
+      const page = await state.pdf.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: state.scale });
+      const shell = document.createElement('div');
+      shell.className = 'page-shell';
+      shell.style.width = (viewport.width + 86) + 'px';
+      shell.style.height = viewport.height + 'px';
+      const noteLayer = document.createElement('div');
+      noteLayer.className = 'note-layer';
+      noteLayer.style.height = viewport.height + 'px';
+      const canvas = document.createElement('canvas');
+      canvas.className = 'page-canvas';
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = Math.floor(viewport.width) + 'px';
+      canvas.style.height = Math.floor(viewport.height) + 'px';
+      const label = document.createElement('div');
+      label.className = 'page-label';
+      label.textContent = 'Page ' + pageNumber;
+      const selectionRect = document.createElement('div');
+      selectionRect.className = 'selection-rect';
+      shell.appendChild(noteLayer);
+      shell.appendChild(canvas);
+      shell.appendChild(selectionRect);
+      shell.appendChild(label);
+      $('viewer').appendChild(shell);
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const textContent = await page.getTextContent();
+      const textLines = extractTextLines(textContent, viewport);
+      const pdfViewport = page.getViewport({ scale: 1 });
+      const pageData = { pageNumber, page, viewport, pdfWidth: pdfViewport.width, pdfHeight: pdfViewport.height, widthPx: canvas.width, heightPx: canvas.height, shell, canvas, noteLayer, selectionRect, textLines };
+      state.pages.set(pageNumber, pageData);
+      canvas.addEventListener('mousedown', (event) => startSelection(event, pageNumber));
+    }
+
+    function startSelection(event, pageNumber) {
+      if (event.button !== 0) return;
+      const pageData = state.pages.get(pageNumber);
+      const rect = pageData.canvas.getBoundingClientRect();
+      const xPx = (event.clientX - rect.left) * (pageData.widthPx / rect.width);
+      const yPx = (event.clientY - rect.top) * (pageData.heightPx / rect.height);
+      state.selecting = { pageNumber, startX: xPx, startY: yPx, currentX: xPx, currentY: yPx, moved: false };
+      pageData.selectionRect.style.display = 'none';
+      document.addEventListener('mousemove', onSelectionMove);
+      document.addEventListener('mouseup', endSelection);
+    }
+
+    function onSelectionMove(event) {
+      if (!state.selecting) return;
+      const sel = state.selecting;
+      const pageData = state.pages.get(sel.pageNumber);
+      const rect = pageData.canvas.getBoundingClientRect();
+      const xPx = (event.clientX - rect.left) * (pageData.widthPx / rect.width);
+      const yPx = (event.clientY - rect.top) * (pageData.heightPx / rect.height);
+      sel.currentX = Math.max(0, Math.min(pageData.widthPx, xPx));
+      sel.currentY = Math.max(0, Math.min(pageData.heightPx, yPx));
+      if (Math.abs(sel.currentX - sel.startX) > 5 || Math.abs(sel.currentY - sel.startY) > 5) sel.moved = true;
+      if (sel.moved) showSelectionRect(pageData, sel);
+    }
+
+    function showSelectionRect(pageData, sel) {
+      const left = Math.min(sel.startX, sel.currentX) + 86;
+      const top = Math.min(sel.startY, sel.currentY);
+      const width = Math.abs(sel.currentX - sel.startX);
+      const height = Math.abs(sel.currentY - sel.startY);
+      const el = pageData.selectionRect;
+      el.style.left = left + 'px';
+      el.style.top = top + 'px';
+      el.style.width = width + 'px';
+      el.style.height = height + 'px';
+      el.style.display = 'block';
+    }
+
+    function endSelection() {
+      if (!state.selecting) return;
+      const sel = state.selecting;
+      const pageData = state.pages.get(sel.pageNumber);
+      document.removeEventListener('mousemove', onSelectionMove);
+      document.removeEventListener('mouseup', endSelection);
+      pageData.selectionRect.style.display = 'none';
+      let selection;
+      if (sel.moved && Math.abs(sel.currentX - sel.startX) > 8 && Math.abs(sel.currentY - sel.startY) > 8) {
+        selection = selectionFromRect(pageData, { x1: sel.startX, y1: sel.startY, x2: sel.currentX, y2: sel.currentY });
+        addNoteFromSelection(sel.pageNumber, selection, 'area', (sel.startX + sel.currentX) / 2, (sel.startY + sel.currentY) / 2);
+      } else {
+        const mode = $('captureMode').value;
+        if (mode === 'line') selection = { text: nearestText(pageData, sel.startY, sel.startX), lines: [], bbox: null };
+        else selection = paragraphSelectionAt(pageData, sel.startX, sel.startY);
+        addNoteFromSelection(sel.pageNumber, selection, mode, sel.startX, sel.startY);
+      }
+      state.selecting = null;
+    }
+
+    function addNoteFromSelection(pageNumber, selection, selectionMode, fallbackX, fallbackY) {
+      const pageData = state.pages.get(pageNumber);
+      const center = centerOfSelection(selection, fallbackX, fallbackY);
+      const targetText = cleanExtractedText(selection && selection.text ? selection.text : '');
+      const note = {
+        uid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+        id: nextNoteId(),
+        section: $('sectionName').value.trim(),
+        page: pageNumber,
+        yRatio: Math.max(0.01, Math.min(0.99, center.y / pageData.heightPx)),
+        xRatio: Math.max(0.01, Math.min(0.99, center.x / pageData.widthPx)),
+        selectionMode,
+        bbox: selection && selection.bbox ? selection.bbox : null,
+        anchorText: targetText,
+        chineseTranslation: '',
+        translationStatus: '',
+        requestedDocument: '',
+        companyProvided: '',
+        remarks: ''
+      };
+      state.notes.push(note);
+      renderNotes();
+      updateTable();
+      if (!targetText) toast('已生成 note，但没有抓到文字，可在右侧原文字段手动补充。');
+      if (targetText && $('autoTranslateNew').checked) {
+        checkLocalTranslator(false).then(ready => {
+          if (ready) translateNote(note);
+        });
+      }
+    }
+
+    function sortNotes() {
+      state.notes.sort((a, b) => a.page !== b.page ? a.page - b.page : a.yRatio - b.yRatio);
+    }
+
+    function renderNotes() {
+      for (const pageData of state.pages.values()) pageData.noteLayer.innerHTML = '';
+      for (const note of state.notes) {
+        const pageData = state.pages.get(Number(note.page));
+        if (!pageData) continue;
+        const y = Math.max(6, Math.min(pageData.heightPx - 16, note.yRatio * pageData.heightPx));
+        const tag = document.createElement('div');
+        tag.className = 'note-tag';
+        tag.textContent = note.id;
+        tag.title = '拖动调整位置';
+        tag.style.top = (y - 7) + 'px';
+        tag.dataset.uid = note.uid;
+        tag.addEventListener('mousedown', (event) => startDrag(event, note.uid));
+        tag.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const row = document.querySelector('[data-row-uid="' + note.uid + '"]');
+          if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        const bar = document.createElement('div');
+        bar.className = 'note-bar';
+        bar.style.top = (y - 15) + 'px';
+        pageData.noteLayer.appendChild(bar);
+        pageData.noteLayer.appendChild(tag);
+      }
+    }
+
+    function startDrag(event, uid) {
+      event.preventDefault();
+      event.stopPropagation();
+      const note = state.notes.find(n => n.uid === uid);
+      if (!note) return;
+      state.dragging = { uid, pageNumber: note.page };
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', endDrag);
+    }
+
+    function onDrag(event) {
+      if (!state.dragging) return;
+      const note = state.notes.find(n => n.uid === state.dragging.uid);
+      const pageData = state.pages.get(Number(state.dragging.pageNumber));
+      const rect = pageData.canvas.getBoundingClientRect();
+      const yPx = (event.clientY - rect.top) * (pageData.heightPx / rect.height);
+      note.yRatio = Math.max(0.01, Math.min(0.99, yPx / pageData.heightPx));
+      renderNotes();
+      updateTable(false);
+    }
+
+    function endDrag() {
+      state.dragging = null;
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', endDrag);
+      updateTable();
+    }
+
+    function translationStatusLabel(status) {
+      const labels = {
+        queued: '等待翻译',
+        translating: '翻译中',
+        done: '已自动翻译',
+        empty: '无翻译结果',
+        failed: '翻译失败'
+      };
+      return labels[status] || status;
+    }
+
+    function updateTable(keepFocus = true) {
+      sortNotes();
+      const body = $('notesBody');
+      const active = keepFocus ? document.activeElement : null;
+      const activeKey = active ? active.dataset.key : null;
+      body.innerHTML = '';
+      for (const note of state.notes) {
+        const tr = document.createElement('tr');
+        tr.dataset.rowUid = note.uid;
+        tr.innerHTML = `
+          <td>
+            <input class="note-id-input" data-field="id" data-uid="${note.uid}" data-key="${note.uid}:id" value="${escapeHtml(note.id)}" />
+            <div style="margin-top:6px;color:#6b7280">${escapeHtml(note.section || '')}</div>
+            <div style="margin-top:4px;color:#9ca3af;font-size:11px">${escapeHtml(note.selectionMode || 'paragraph')}</div>
+          </td>
+          <td><input class="small-input" data-field="page" data-uid="${note.uid}" data-key="${note.uid}:page" type="number" value="${note.page}" min="1" /></td>
+          <td>
+            <label>招股书原文</label>
+            <textarea data-field="anchorText" data-uid="${note.uid}" data-key="${note.uid}:anchorText">${escapeHtml(note.anchorText || '')}</textarea>
+            <label>中文翻译${note.translationStatus ? ' · ' + escapeHtml(translationStatusLabel(note.translationStatus)) : ''}</label>
+            <textarea data-field="chineseTranslation" data-uid="${note.uid}" data-key="${note.uid}:chineseTranslation" placeholder="请在此补充中文翻译。Word 会自动放在原文下方。">${escapeHtml(note.chineseTranslation || '')}</textarea>
+            <label>需提供的文件（建议文件）</label>
+            <textarea data-field="requestedDocument" data-uid="${note.uid}" data-key="${note.uid}:requestedDocument" placeholder="例如：董事确认、业务合同、发票、审计师圈数、行业顾问确认等。">${escapeHtml(note.requestedDocument || '')}</textarea>
+            <label>提供情况（公司提供文件名）</label>
+            <textarea data-field="companyProvided" data-uid="${note.uid}" data-key="${note.uid}:companyProvided" placeholder="可留空，发给公司后由公司填写。">${escapeHtml(note.companyProvided || '')}</textarea>
+            <label>公司回复 / 备注</label>
+            <textarea data-field="remarks" data-uid="${note.uid}" data-key="${note.uid}:remarks">${escapeHtml(note.remarks || '')}</textarea>
+          </td>
+          <td>
+            <div class="table-actions">
+              <button data-action="goto" data-uid="${note.uid}">定位</button>
+              <button data-action="recapture" data-uid="${note.uid}">重抓整段</button>
+              <button data-action="translate" data-uid="${note.uid}">翻译</button>
+              <button data-action="delete" data-uid="${note.uid}" class="danger">删除</button>
+            </div>
+          </td>`;
+        body.appendChild(tr);
+      }
+      body.querySelectorAll('input, textarea').forEach(el => el.addEventListener('input', onFieldChange));
+      body.querySelectorAll('button').forEach(el => el.addEventListener('click', onTableAction));
+      if (activeKey) {
+        const next = document.querySelector('[data-key="' + activeKey + '"]');
+        if (next) next.focus();
+      }
+      $('stats').textContent = state.notes.length ? ('已生成 ' + state.notes.length + ' 个 notes。') : '尚未生成 note。';
+      renderNotes();
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function onFieldChange(event) {
+      const uid = event.target.dataset.uid;
+      const field = event.target.dataset.field;
+      const note = state.notes.find(n => n.uid === uid);
+      if (!note) return;
+      if (field === 'page') note.page = Number(event.target.value || 1);
+      else note[field] = event.target.value;
+      if (field === 'anchorText') note.translationStatus = '';
+      if (field === 'chineseTranslation' && event.target.value.trim()) note.translationStatus = 'done';
+      renderNotes();
+    }
+
+    function onTableAction(event) {
+      const uid = event.target.dataset.uid;
+      const action = event.target.dataset.action;
+      const note = state.notes.find(n => n.uid === uid);
+      if (!note) return;
+      if (action === 'delete') {
+        state.notes = state.notes.filter(n => n.uid !== uid);
+        updateTable();
+      }
+      if (action === 'goto') {
+        const pageData = state.pages.get(Number(note.page));
+        if (pageData) pageData.shell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (action === 'recapture') {
+        const pageData = state.pages.get(Number(note.page));
+        if (pageData) {
+          const yPx = note.yRatio * pageData.heightPx;
+          const xPx = note.xRatio * pageData.widthPx;
+          const selection = paragraphSelectionAt(pageData, xPx, yPx);
+          note.anchorText = selection.text || note.anchorText || '';
+          note.selectionMode = 'paragraph';
+          note.bbox = selection.bbox || note.bbox || null;
+          note.translationStatus = '';
+          updateTable();
+          toast('已按当前位置重新抓取整段文字。');
+        }
+      }
+      if (action === 'translate') {
+        checkLocalTranslator(false).then(ready => {
+          if (ready) translateNote(note, true);
+          else toast('本机翻译服务不可用，请先运行启动脚本。');
+        });
+      }
+    }
+
+    function renumberNotes() {
+      const prefix = $('prefix').value.trim() || 'B';
+      let current = Number($('startNo').value || 1);
+      sortNotes();
+      for (const note of state.notes) {
+        note.id = prefix + current;
+        current += 1;
+      }
+      state.counter = current;
+      updateTable();
+      toast('已按页面顺序重新编号。');
+    }
+
+    async function exportAnnotatedPdf() {
+      if (!state.pdfArrayBuffer || !state.notes.length) {
+        toast('请先上传 PDF 并生成至少一个 note。');
+        return;
+      }
+      sortNotes();
+      const { PDFDocument, StandardFonts, rgb } = PDFLib;
+      const pdfDoc = await PDFDocument.load(state.pdfArrayBuffer.slice(0));
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const marginX = Number($('marginX').value || 14);
+      const fontSize = Number($('fontSize').value || 7);
+      for (const note of state.notes) {
+        const pageIndex = Number(note.page) - 1;
+        if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
+        const pdfPage = pdfDoc.getPage(pageIndex);
+        const size = pdfPage.getSize();
+        const y = size.height - (note.yRatio * size.height);
+        const safeY = Math.max(8, Math.min(size.height - 8, y));
+        pdfPage.drawText(note.id, { x: marginX, y: safeY - fontSize / 2, size: fontSize, font, color: rgb(0, 0, 0) });
+        pdfPage.drawLine({ start: { x: marginX + 46, y: safeY - 14 }, end: { x: marginX + 46, y: safeY + 14 }, thickness: 1.2, color: rgb(0, 0, 0) });
+      }
+      const bytes = await pdfDoc.save();
+      downloadBlob(new Blob([bytes], { type: 'application/pdf' }), baseName(state.fileName) + '_margin_notes.pdf');
+    }
+
+    function xmlEscape(value) {
+      return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    }
+
+    function wordRun(text, options = {}) {
+      const bold = options.bold ? '<w:b/>' : '';
+      const color = options.color ? `<w:color w:val="${options.color}"/>` : '';
+      const size = options.size || 20;
+      return `<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="宋体"/>${bold}${color}<w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`;
+    }
+
+    function wordParagraph(text, options = {}) {
+      const align = options.align || 'left';
+      const after = options.after ?? 0;
+      const before = options.before ?? 0;
+      return `<w:p><w:pPr><w:jc w:val="${align}"/><w:spacing w:before="${before}" w:after="${after}" w:line="276" w:lineRule="auto"/></w:pPr>${wordRun(text, options)}</w:p>`;
+    }
+
+    function wordParagraphs(text, options = {}) {
+      const normalized = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const lines = normalized.split('\n');
+      return lines.map(line => wordParagraph(line || ' ', options)).join('');
+    }
+
+    function wordCell(text, width, options = {}) {
+      const fill = options.fill ? `<w:shd w:fill="${options.fill}"/>` : '';
+      const vAlign = options.header ? 'center' : 'top';
+      const paragraphs = wordParagraphs(String(text ?? ''), { bold: options.header, color: options.header ? 'FFFFFF' : '000000', size: options.header ? 21 : 19, after: 0, before: 0, align: options.align || 'left' });
+      return `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/><w:vAlign w:val="${vAlign}"/>${fill}<w:tcMar><w:top w:w="90" w:type="dxa"/><w:left w:w="110" w:type="dxa"/><w:bottom w:w="90" w:type="dxa"/><w:right w:w="110" w:type="dxa"/></w:tcMar></w:tcPr>${paragraphs}</w:tc>`;
+    }
+
+    function wordRow(cells, isHeader = false) {
+      const widths = [1150, 6200, 3600, 1800, 1650];
+      return `<w:tr>${cells.map((cell, index) => wordCell(cell, widths[index], { header: isHeader, fill: isHeader ? '8F2B2F' : '' })).join('')}</w:tr>`;
+    }
+
+    function disclosureCell(note) {
+      const translation = note.chineseTranslation && note.chineseTranslation.trim() ? note.chineseTranslation.trim() : '（中文翻译待补充）';
+      return `【招股书原文】\n${note.anchorText || ''}\n\n【中文翻译】\n${translation}`;
+    }
+
+    function buildWordDocumentXml(title, tableRows) {
+      const intro = [
+        '验证文件是为了支持招股书中的相关披露，以保证招股书的表述是正确及不含误导性的。',
+        '烦请公司在提供验证文件时，在每个电子档案名称的开端标上对应序号，以提升验证工作的效率。',
+        '烦请公司提供本清单中所要求的文件以支持招股书的表述，并协助验证工作。',
+        '请留意，由于招股书正持续不断地修改，项目组会在审阅已提供文件后，不时根据修改内容进一步要求公司提供其它支持文件。'
+      ];
+      const bodyRows = tableRows.map(row => wordRow([row.id, row.disclosure, row.requestedDocument, row.companyProvided, row.remarks])).join('');
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>
+    ${wordParagraph(title, { bold: true, size: 28, align: 'center', after: 220 })}
+    ${intro.map(p => wordParagraph(p, { size: 21, after: 80 })).join('')}
+    <w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="14400" w:type="dxa"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="6" w:space="0" w:color="BFBFBF"/>
+          <w:left w:val="single" w:sz="6" w:space="0" w:color="BFBFBF"/>
+          <w:bottom w:val="single" w:sz="6" w:space="0" w:color="BFBFBF"/>
+          <w:right w:val="single" w:sz="6" w:space="0" w:color="BFBFBF"/>
+          <w:insideH w:val="single" w:sz="6" w:space="0" w:color="D9D9D9"/>
+          <w:insideV w:val="single" w:sz="6" w:space="0" w:color="D9D9D9"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="fixed"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="1150"/><w:gridCol w:w="6200"/><w:gridCol w:w="3600"/><w:gridCol w:w="1800"/><w:gridCol w:w="1650"/>
+      </w:tblGrid>
+      ${wordRow(['序号', '招股书披露内容（招股书原文+翻译）', '需提供的文件（建议文件）', '提供情况（公司提供文件名）', '公司回复 / 备注'], true)}
+      ${bodyRows}
+    </w:tbl>
+    <w:sectPr>
+      <w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>
+      <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+    }
+
+    async function exportWord() {
+      if (!state.notes.length) {
+        toast('请先生成至少一个 note。');
+        return;
+      }
+      if (!window.JSZip) {
+        toast('Word 导出需要 JSZip，请确认网络可访问 jsDelivr。');
+        return;
+      }
+      sortNotes();
+      if ($('translateBeforeExport').checked) await batchTranslateMissing(false);
+      const projectName = $('projectName').value.trim() || 'XX项目';
+      const sectionName = $('sectionName').value.trim() || '业务部分';
+      const title = `${projectName}招股书验证需求文件清单（${sectionName}）`;
+      const tableRows = state.notes.map(note => ({
+        id: note.id || '',
+        disclosure: disclosureCell(note),
+        requestedDocument: note.requestedDocument || '',
+        companyProvided: note.companyProvided || '',
+        remarks: note.remarks || ''
+      }));
+      const zip = new JSZip();
+      zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+      zip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+      zip.folder('word').file('document.xml', buildWordDocumentXml(title, tableRows));
+      zip.folder('word').folder('_rels').file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`);
+      const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      downloadBlob(blob, sanitizeFileName(title) + '.docx');
+    }
+
+    function toggleIndex() {
+      state.indexCollapsed = !state.indexCollapsed;
+      document.body.classList.toggle('index-collapsed', state.indexCollapsed);
+      $('toggleIndexBtn').textContent = state.indexCollapsed ? '展开右侧 Index' : '收起右侧 Index';
+      setTimeout(() => {
+        for (const pageData of state.pages.values()) {
+          if (pageData.shell) pageData.shell.style.marginLeft = 'auto';
+        }
+      }, 50);
+    }
+
+    $('pdfFile').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try { await loadPdf(file); }
+      catch (err) { console.error(err); toast('PDF 读取失败，请检查文件。'); }
+    });
+    $('toggleIndexBtn').addEventListener('click', toggleIndex);
+    $('collapseSideBtn').addEventListener('click', toggleIndex);
+    $('renumberBtn').addEventListener('click', renumberNotes);
+    $('checkTranslateBtn').addEventListener('click', () => checkLocalTranslator(true));
+    $('batchTranslateBtn').addEventListener('click', () => batchTranslateMissing(true));
+    $('exportPdfBtn').addEventListener('click', exportAnnotatedPdf);
+    $('exportWordBtn').addEventListener('click', exportWord);
+    $('clearBtn').addEventListener('click', () => {
+      if (!confirm('确认清空全部 notes？')) return;
+      state.notes = [];
+      state.counter = Number($('startNo').value || 1);
+      updateTable();
+    });
+    checkLocalTranslator(false);
+  </script>
+</body>
+</html>
