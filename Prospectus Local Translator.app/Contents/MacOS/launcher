@@ -87,8 +87,23 @@ APPLESCRIPT
 fi
 
 if ! curl -fsS "http://127.0.0.1:8765/health" >/dev/null 2>&1; then
-  "$VENV_PYTHON" "$SERVER_SCRIPT" --no-browser --idle-timeout 14400 >/tmp/prospectus-local-translator.log 2>&1 &
-  sleep 1
+  nohup "$VENV_PYTHON" "$SERVER_SCRIPT" --no-browser --idle-timeout 14400 >/tmp/prospectus-local-translator.log 2>&1 &
+  SERVER_PID=$!
+  disown "$SERVER_PID" 2>/dev/null || true
+
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -fsS "http://127.0.0.1:8765/health" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.5
+  done
+fi
+
+if ! curl -fsS "http://127.0.0.1:8765/health" >/dev/null 2>&1; then
+  osascript <<'APPLESCRIPT'
+display dialog "本机翻译服务启动失败。请确认已经运行 install_local_translator.command，并查看 /tmp/prospectus-local-translator.log。" buttons {"确定"} default button "确定"
+APPLESCRIPT
+  exit 1
 fi
 
 open "$SITE_URL"
