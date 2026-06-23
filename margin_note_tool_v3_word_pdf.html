@@ -343,7 +343,7 @@
         3. 如需精确控制范围，直接拖拽框选整段、表格行或多段文字。<br />
         4. 右侧 Index 可收起，收起后 PDF 操作区会自动变宽。<br />
         5. Word 清单会按照“序号、招股书披露内容、需提供文件、提供情况、公司回复/备注”的表格格式导出。<br /><br />
-        本机翻译服务启动后，系统会把圈选段落发到本机 127.0.0.1 翻译接口，中文结果会填入右侧“中文翻译”栏，导出前仍可人工修改。
+        安装本机翻译服务后，系统会把圈选段落发到本机 127.0.0.1 翻译接口，中文结果会填入右侧“中文翻译”栏，导出前仍可人工修改。
       </div>
     </aside>
   </main>
@@ -442,7 +442,7 @@
         return false;
       } catch (err) {
         setTranslateStatus('本机翻译：未启动', false);
-        if (showToast) toast('本机翻译服务未启动，请先运行启动脚本。');
+        if (showToast) toast('本机翻译服务未启动，请先运行安装脚本或确认后台服务已启动。');
         return false;
       } finally {
         state.translateChecking = false;
@@ -977,7 +977,7 @@
       if (action === 'translate') {
         checkLocalTranslator(false).then(ready => {
           if (ready) translateNote(note, true);
-          else toast('本机翻译服务不可用，请先运行启动脚本。');
+          else toast('本机翻译服务不可用，请先运行安装脚本或确认后台服务已启动。');
         });
       }
     }

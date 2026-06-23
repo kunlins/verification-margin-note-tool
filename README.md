@@ -24,8 +24,13 @@
 }
 ```
 
-## 本机翻译 App
+## 本机翻译服务
 
-macOS 用户安装翻译模型后，可以打开 `Prospectus Local Translator.app`。App 会要求输入网站地址，检查 `status.json`，然后在本机启动翻译服务并打开网站。
+用户第一次运行安装脚本后，本机翻译服务会在后台运行：
+
+- macOS: `install_local_translator.command`
+- Windows: `install_local_translator.bat`
+
+安装完成后，用户直接打开 GitHub Pages 网站即可使用自动翻译。
 
 本机翻译服务只监听 `127.0.0.1`。
