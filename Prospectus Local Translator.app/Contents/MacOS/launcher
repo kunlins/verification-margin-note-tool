@@ -1,13 +1,23 @@
 #!/bin/bash
 set -e
 
-APP_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+LAUNCHER_LOG="/tmp/prospectus-local-translator-launcher.log"
+exec >>"$LAUNCHER_LOG" 2>&1
+echo "----- $(date) -----"
+
+APP_DIR="$(cd "$(dirname "$0")/../.." && pwd -P)"
 PROJECT_DIR="$(cd "$APP_DIR/.." && pwd)"
 VENV_PYTHON="$PROJECT_DIR/.venv/bin/python"
 SERVER_SCRIPT="$PROJECT_DIR/local_translation_server.py"
 INSTALL_SCRIPT="$PROJECT_DIR/install_local_translator.command"
 
+echo "APP_DIR=$APP_DIR"
+echo "PROJECT_DIR=$PROJECT_DIR"
+echo "VENV_PYTHON=$VENV_PYTHON"
+echo "SERVER_SCRIPT=$SERVER_SCRIPT"
+
 if [ ! -x "$VENV_PYTHON" ] || [ ! -f "$SERVER_SCRIPT" ]; then
+  echo "Missing local environment or server script."
   osascript <<APPLESCRIPT
 display dialog "本机翻译环境还没有安装。请先运行项目文件夹里的 install_local_translator.command，安装完成后再打开本 App。" buttons {"打开安装脚本", "取消"} default button "打开安装脚本"
 APPLESCRIPT
@@ -31,6 +41,7 @@ case "$SITE_URL" in
   http://*|https://*) ;;
   *) SITE_URL="https://$SITE_URL" ;;
 esac
+echo "SITE_URL=$SITE_URL"
 
 STATUS_RESULT="$("$VENV_PYTHON" - "$SITE_URL" <<'PY'
 import json
@@ -85,8 +96,10 @@ end run
 APPLESCRIPT
   exit 0
 fi
+echo "Website status check passed."
 
 if ! curl -fsS "http://127.0.0.1:8765/health" >/dev/null 2>&1; then
+  echo "Starting local translation service..."
   nohup "$VENV_PYTHON" "$SERVER_SCRIPT" --no-browser --idle-timeout 14400 >/tmp/prospectus-local-translator.log 2>&1 &
   SERVER_PID=$!
   disown "$SERVER_PID" 2>/dev/null || true
@@ -97,14 +110,18 @@ if ! curl -fsS "http://127.0.0.1:8765/health" >/dev/null 2>&1; then
     fi
     sleep 0.5
   done
+else
+  echo "Local translation service is already running."
 fi
 
 if ! curl -fsS "http://127.0.0.1:8765/health" >/dev/null 2>&1; then
+  echo "Local translation service failed to start."
   osascript <<'APPLESCRIPT'
 display dialog "本机翻译服务启动失败。请确认已经运行 install_local_translator.command，并查看 /tmp/prospectus-local-translator.log。" buttons {"确定"} default button "确定"
 APPLESCRIPT
   exit 1
 fi
 
+echo "Local translation service is ready."
 open "$SITE_URL"
 exit 0
