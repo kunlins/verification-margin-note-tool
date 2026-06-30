@@ -87,6 +87,60 @@
       border-color: #d8c3a3;
       background: rgba(255, 255, 255, 0.12);
     }
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .download-menu {
+      position: relative;
+    }
+    .download-menu summary {
+      list-style: none;
+      min-height: 32px;
+      padding: 6px 12px;
+      border: 1px solid rgba(216, 195, 163, 0.72);
+      border-radius: 999px;
+      color: #f7f0e5;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      background: rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      user-select: none;
+    }
+    .download-menu summary::-webkit-details-marker { display: none; }
+    .download-menu summary:hover {
+      border-color: #d8c3a3;
+      background: rgba(255, 255, 255, 0.12);
+    }
+    .download-options {
+      position: absolute;
+      right: 0;
+      top: 40px;
+      min-width: 190px;
+      padding: 8px;
+      border: 1px solid rgba(216, 195, 163, 0.42);
+      border-radius: 8px;
+      background: #fffdf8;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      z-index: 40;
+    }
+    .download-options a {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .download-options a:hover {
+      background: var(--soft);
+      color: var(--brand-dark);
+    }
     .layout {
       display: grid;
       grid-template-columns: minmax(820px, 1fr) 470px;
@@ -159,6 +213,14 @@
       box-shadow: 0 0 0 3px rgba(165, 122, 49, 0.14);
     }
     textarea { min-height: 58px; resize: vertical; line-height: 1.42; }
+    .note-textarea {
+      width: 100%;
+      min-height: 122px;
+      line-height: 1.55;
+    }
+    .note-textarea.translation {
+      min-height: 108px;
+    }
     input[type="file"] { font-size: 12px; }
     button {
       border: 1px solid var(--border);
@@ -337,6 +399,24 @@
       padding: 0 1px;
       border-radius: 2px;
     }
+    .highlight-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 8px 0 4px;
+    }
+    .highlight-tools label { margin: 0; }
+    .highlight-tools .tool-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+    .highlight-tools button {
+      padding: 4px 7px;
+      font-size: 11px;
+    }
     .screenshot-preview {
       display: block;
       max-width: 100%;
@@ -398,7 +478,16 @@
       <div class="header-meta">
         <div class="team-name">SS Team</div>
         <div class="team-credit">Created by 小宋</div>
-        <a class="header-link" href="https://kunlins.github.io/Verification-Filing/" target="_blank" rel="noopener noreferrer">Verification Note</a>
+        <div class="header-actions">
+          <details class="download-menu">
+            <summary>Download Translator</summary>
+            <div class="download-options">
+              <a href="downloads/ProspectusLocalTranslator-mac.zip" download>Mac 安装包</a>
+              <a href="downloads/ProspectusLocalTranslator-windows.zip" download>Windows 安装包</a>
+            </div>
+          </details>
+          <a class="header-link" href="https://kunlins.github.io/Verification-Filing/" target="_blank" rel="noopener noreferrer">Verification Note</a>
+        </div>
       </div>
     </div>
   </header>
@@ -452,10 +541,6 @@
           </div>
         </div>
         <div class="field checkbox-field">
-          <input id="autoTranslateNew" type="checkbox" checked />
-          <label for="autoTranslateNew">新 note 自动翻译</label>
-        </div>
-        <div class="field checkbox-field">
           <input id="translateBeforeExport" type="checkbox" checked />
           <label for="translateBeforeExport">导出前补齐翻译</label>
         </div>
@@ -466,7 +551,6 @@
         <button id="toggleIndexBtn">收起右侧 Index</button>
         <button id="renumberBtn">按页面顺序重新编号</button>
         <button id="checkTranslateBtn">检查本机翻译</button>
-        <button id="batchTranslateBtn">批量翻译未翻译项</button>
         <button id="exportPdfBtn" class="primary">导出 PDF margin notes</button>
         <button id="exportWordBtn" class="primary">导出 Word 验证清单</button>
         <button id="clearBtn" class="danger">清空全部 notes</button>
@@ -475,7 +559,7 @@
       <div class="viewer-panel" id="viewer">
         <div class="empty">
           请上传招股书 PDF。<br />
-          圈注生成后，右侧 Index 会同步记录原文、翻译草稿、验证文件要求及公司回复栏。
+          圈注生成后，右侧 Index 会同步记录招股书原文和中文翻译草稿。
         </div>
       </div>
     </section>
@@ -494,7 +578,7 @@
             <tr>
               <th style="width:90px">编号</th>
               <th style="width:56px">页码</th>
-              <th>披露内容及验证需求</th>
+              <th>招股书原文及中文翻译</th>
               <th style="width:70px">操作</th>
             </tr>
           </thead>
@@ -657,6 +741,7 @@
         const translated = await translateText(note.anchorText);
         if (translated) {
           note.chineseTranslation = translated;
+          syncExistingHighlightsToTranslation(note);
           note.translationStatus = 'done';
           updateTable(false);
           return true;
@@ -705,6 +790,7 @@
           const translated = String(map.get(note.uid) || '').trim();
           if (translated) {
             note.chineseTranslation = translated;
+            syncExistingHighlightsToTranslation(note);
             note.translationStatus = 'done';
             count += 1;
           } else {
@@ -783,66 +869,6 @@
         const sortedItems = line.items.sort((a, b) => a.left - b.left);
         return { y: line.y, top: line.top, bottom: line.bottom, xMin: line.left, xMax: line.right, height: Math.max(line.bottom - line.top, line.height), items: sortedItems, text: cleanExtractedText(sortedItems.map(i => i.text).join(' ')) };
       }).filter(line => line.text).sort((a, b) => a.y - b.y || a.xMin - b.xMin);
-    }
-
-    function detectUnderlinesOnText(canvas, textLines) {
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      let data;
-      try {
-        data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      } catch (err) {
-        console.warn('Underline detection skipped:', err);
-        return;
-      }
-      const isDark = (x, y) => {
-        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return false;
-        const idx = ((y * canvas.width) + x) * 4;
-        return data[idx + 3] > 180 && data[idx] < 95 && data[idx + 1] < 95 && data[idx + 2] < 95;
-      };
-      for (const line of textLines) {
-        for (const item of line.items || []) {
-          const left = Math.max(0, Math.floor(item.left - 1));
-          const right = Math.min(canvas.width - 1, Math.ceil(item.right + 1));
-          const width = right - left + 1;
-          if (width < 3) continue;
-          const yStart = Math.max(0, Math.floor(item.bottom - Math.max(4, item.height * 0.45)));
-          const yEnd = Math.min(canvas.height - 1, Math.ceil(item.bottom + Math.max(5, item.height * 0.45)));
-          let bestRun = 0;
-          for (let y = yStart; y <= yEnd; y++) {
-            let run = 0;
-            for (let x = left; x <= right; x++) {
-              if (isDark(x, y) || isDark(x, y - 1) || isDark(x, y + 1)) {
-                run += 1;
-                if (run > bestRun) bestRun = run;
-              } else {
-                run = 0;
-              }
-            }
-          }
-          const minRun = Math.max(3, Math.min(18, width * 0.45));
-          item.underlined = bestRun >= minRun && (bestRun / width) >= 0.28;
-        }
-      }
-    }
-
-    function blacklineSegmentsFromLines(lines) {
-      const segments = [];
-      for (const line of lines || []) {
-        let group = [];
-        for (const item of line.items || []) {
-          if (item.underlined) group.push(item.text);
-          else if (group.length) {
-            const segment = cleanExtractedText(group.join(' '));
-            if (/[A-Za-z0-9\u4e00-\u9fff]/.test(segment)) segments.push(segment);
-            group = [];
-          }
-        }
-        if (group.length) {
-          const segment = cleanExtractedText(group.join(' '));
-          if (/[A-Za-z0-9\u4e00-\u9fff]/.test(segment)) segments.push(segment);
-        }
-      }
-      return segments;
     }
 
     function nearestLineIndex(pageData, yPx, xPx = null) {
@@ -1082,7 +1108,6 @@
       await page.render({ canvasContext: ctx, viewport }).promise;
       const textContent = await page.getTextContent();
       const textLines = extractTextLines(textContent, viewport);
-      detectUnderlinesOnText(canvas, textLines);
       const pdfViewport = page.getViewport({ scale: 1 });
       const bodyRightPx = inferBodyRight(textLines, canvas.width);
       const pageData = { pageNumber, page, viewport, pdfWidth: pdfViewport.width, pdfHeight: pdfViewport.height, widthPx: canvas.width, heightPx: canvas.height, shell, canvas, noteLayer, selectionRect, textLines, bodyRightPx };
@@ -1173,7 +1198,6 @@
       const pageData = state.pages.get(pageNumber);
       const center = centerOfSelection(selection, fallbackX, fallbackY);
       const targetText = cleanExtractedText(selection && selection.text ? selection.text : '');
-      const blacklineSegments = selectionMode === 'screenshot' ? [] : blacklineSegmentsFromLines(selection && selection.lines);
       const screenshot = selectionMode === 'screenshot' ? screenshotFromSelection(pageData, selection) : null;
       const note = {
         uid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
@@ -1185,8 +1209,8 @@
         selectionMode,
         bbox: selection && selection.bbox ? selection.bbox : null,
         anchorText: selectionMode === 'screenshot' ? '' : targetText,
-        blacklineSegments,
         chineseTranslation: '',
+        highlightRanges: { anchorText: [], chineseTranslation: [] },
         translationStatus: '',
         screenshotDataUrl: screenshot ? screenshot.dataUrl : '',
         screenshotWidth: screenshot ? screenshot.width : 0,
@@ -1202,10 +1226,8 @@
         toast(screenshot ? '已生成截图 note，Word 将嵌入该选区图片。' : '已生成截图 note，但截图区域无效。');
       } else if (!targetText) {
         toast('已生成 note，但没有抓到文字，可在右侧原文字段手动补充。');
-      } else if (blacklineSegments.length) {
-        toast('已生成 note，并识别到 ' + blacklineSegments.length + ' 处下划线内容。');
       }
-      if (selectionMode !== 'screenshot' && targetText && $('autoTranslateNew').checked) {
+      if (selectionMode !== 'screenshot' && targetText) {
         checkLocalTranslator(false).then(ready => {
           if (ready) translateNote(note);
         });
@@ -1284,38 +1306,119 @@
       return labels[status] || status;
     }
 
-    function highlightRangesForText(text, segments) {
-      const source = String(text || '');
-      const ranges = [];
-      const sortedSegments = [...new Set((segments || []).map(s => cleanExtractedText(s)).filter(Boolean))]
-        .sort((a, b) => b.length - a.length);
-      for (const segment of sortedSegments) {
-        let fromIndex = 0;
-        while (fromIndex < source.length) {
-          const index = source.indexOf(segment, fromIndex);
-          if (index < 0) break;
-          const end = index + segment.length;
-          const overlaps = ranges.some(range => index < range.end && end > range.start);
-          if (!overlaps) ranges.push({ start: index, end });
-          fromIndex = end;
-        }
+    function normalizeRanges(text, ranges) {
+      const length = String(text || '').length;
+      const normalized = (ranges || [])
+        .map(range => ({
+          start: Math.max(0, Math.min(length, Number(range.start))),
+          end: Math.max(0, Math.min(length, Number(range.end)))
+        }))
+        .filter(range => Number.isFinite(range.start) && Number.isFinite(range.end) && range.end > range.start)
+        .sort((a, b) => a.start - b.start || a.end - b.end);
+      const merged = [];
+      for (const range of normalized) {
+        const last = merged[merged.length - 1];
+        if (last && range.start <= last.end) last.end = Math.max(last.end, range.end);
+        else merged.push({ ...range });
       }
-      return ranges.sort((a, b) => a.start - b.start);
+      return merged;
     }
 
-    function highlightedHtml(text, segments) {
+    function highlightedHtmlFromRanges(text, ranges) {
       const source = String(text || '');
-      const ranges = highlightRangesForText(source, segments);
-      if (!ranges.length) return escapeHtml(source).replace(/\n/g, '<br>');
+      const safeRanges = normalizeRanges(source, ranges);
+      if (!safeRanges.length) return escapeHtml(source).replace(/\n/g, '<br>');
       let out = '';
       let cursor = 0;
-      for (const range of ranges) {
+      for (const range of safeRanges) {
         out += escapeHtml(source.slice(cursor, range.start));
         out += `<mark class="blackline-mark">${escapeHtml(source.slice(range.start, range.end))}</mark>`;
         cursor = range.end;
       }
       out += escapeHtml(source.slice(cursor));
       return out.replace(/\n/g, '<br>');
+    }
+
+    function sentenceRanges(text) {
+      const source = String(text || '');
+      const ranges = [];
+      let start = 0;
+      for (let i = 0; i < source.length; i++) {
+        if (/[。！？；.!?;\n]/.test(source[i])) {
+          let end = i + 1;
+          while (end < source.length && /\s/.test(source[end])) end++;
+          if (source.slice(start, end).trim()) ranges.push({ start, end });
+          start = end;
+        }
+      }
+      if (source.slice(start).trim()) ranges.push({ start, end: source.length });
+      return ranges.length ? ranges : (source.trim() ? [{ start: 0, end: source.length }] : []);
+    }
+
+    function mapHighlightRange(sourceText, targetText, selectedRange) {
+      const source = String(sourceText || '');
+      const target = String(targetText || '');
+      if (!source || !target || !selectedRange || selectedRange.end <= selectedRange.start) return null;
+      const sourceSentences = sentenceRanges(source);
+      const targetSentences = sentenceRanges(target);
+      if (sourceSentences.length && targetSentences.length) {
+        const first = sourceSentences.findIndex(range => selectedRange.start < range.end && selectedRange.end > range.start);
+        const last = sourceSentences.map((range, index) => ({ range, index })).filter(item => selectedRange.start < item.range.end && selectedRange.end > item.range.start).pop();
+        if (first >= 0 && last) {
+          const targetStartIndex = Math.max(0, Math.min(targetSentences.length - 1, Math.floor(first * targetSentences.length / sourceSentences.length)));
+          const targetEndIndex = Math.max(targetStartIndex, Math.min(targetSentences.length - 1, Math.ceil((last.index + 1) * targetSentences.length / sourceSentences.length) - 1));
+          return { start: targetSentences[targetStartIndex].start, end: targetSentences[targetEndIndex].end };
+        }
+      }
+      const ratioStart = selectedRange.start / source.length;
+      const ratioEnd = selectedRange.end / source.length;
+      return {
+        start: Math.max(0, Math.min(target.length, Math.floor(target.length * ratioStart))),
+        end: Math.max(0, Math.min(target.length, Math.ceil(target.length * ratioEnd)))
+      };
+    }
+
+    function noteHighlightRanges(note, field) {
+      if (!note.highlightRanges) note.highlightRanges = { anchorText: [], chineseTranslation: [] };
+      if (!Array.isArray(note.highlightRanges.anchorText)) note.highlightRanges.anchorText = [];
+      if (!Array.isArray(note.highlightRanges.chineseTranslation)) note.highlightRanges.chineseTranslation = [];
+      return note.highlightRanges[field] || [];
+    }
+
+    function addHighlightRange(note, field, range) {
+      if (!note || !range || range.end <= range.start) return false;
+      noteHighlightRanges(note, field);
+      note.highlightRanges[field] = normalizeRanges(note[field] || '', [...note.highlightRanges[field], range]);
+      return true;
+    }
+
+    function syncCounterpartHighlight(note, sourceField, range) {
+      const targetField = sourceField === 'anchorText' ? 'chineseTranslation' : 'anchorText';
+      const targetRange = mapHighlightRange(note[sourceField] || '', note[targetField] || '', range);
+      if (targetRange) addHighlightRange(note, targetField, targetRange);
+    }
+
+    function syncExistingHighlightsToTranslation(note) {
+      if (!note || !note.chineseTranslation) return;
+      const existingChinese = noteHighlightRanges(note, 'chineseTranslation');
+      if (existingChinese.length) return;
+      for (const range of noteHighlightRanges(note, 'anchorText')) syncCounterpartHighlight(note, 'anchorText', range);
+    }
+
+    function markSelectedHighlight(note, field) {
+      const textarea = document.querySelector(`textarea[data-uid="${note.uid}"][data-field="${field}"]`);
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        toast('请先在英文或中文框里选中需要高亮的文字。');
+        return;
+      }
+      const range = { start, end };
+      addHighlightRange(note, field, range);
+      syncCounterpartHighlight(note, field, range);
+      updateTable(false);
+      toast('已标记重点，并同步到对应翻译。');
     }
 
     function updateTable(keepFocus = true) {
@@ -1339,23 +1442,34 @@
               <label>招股书截图</label>
               ${note.screenshotDataUrl ? `<img class="screenshot-preview" src="${note.screenshotDataUrl}" alt="截图 note ${escapeHtml(note.id)}" />` : '<div class="stats">尚未保存截图，请重新框选。</div>'}
             ` : `
-              <label>招股书原文</label>
-              ${(note.blacklineSegments || []).length ? `
+              <div class="highlight-tools">
+                <label>招股书原文</label>
+                <div class="tool-buttons">
+                  <button class="highlight-btn" data-action="markHighlight" data-highlight-field="anchorText" data-uid="${note.uid}">标记重点</button>
+                  <button class="highlight-btn" data-action="clearHighlights" data-uid="${note.uid}">清除高亮</button>
+                </div>
+              </div>
+              ${(noteHighlightRanges(note, 'anchorText')).length ? `
                 <div class="blackline-preview">
-                  <div class="blackline-preview-title">已识别下划线 / 新增内容</div>
-                  <div>${highlightedHtml(note.anchorText || '', note.blacklineSegments)}</div>
+                  <div class="blackline-preview-title">已标记英文重点</div>
+                  <div>${highlightedHtmlFromRanges(note.anchorText || '', noteHighlightRanges(note, 'anchorText'))}</div>
                 </div>
               ` : ''}
-              <textarea data-field="anchorText" data-uid="${note.uid}" data-key="${note.uid}:anchorText">${escapeHtml(note.anchorText || '')}</textarea>
-              <label>中文翻译${note.translationStatus ? ' · ' + escapeHtml(translationStatusLabel(note.translationStatus)) : ''}</label>
-              <textarea data-field="chineseTranslation" data-uid="${note.uid}" data-key="${note.uid}:chineseTranslation" placeholder="请在此补充中文翻译。Word 会自动放在原文下方。">${escapeHtml(note.chineseTranslation || '')}</textarea>
+              <textarea class="note-textarea source" data-field="anchorText" data-uid="${note.uid}" data-key="${note.uid}:anchorText">${escapeHtml(note.anchorText || '')}</textarea>
+              <div class="highlight-tools">
+                <label>中文翻译${note.translationStatus ? ' · ' + escapeHtml(translationStatusLabel(note.translationStatus)) : ''}</label>
+                <div class="tool-buttons">
+                  <button class="highlight-btn" data-action="markHighlight" data-highlight-field="chineseTranslation" data-uid="${note.uid}">标记重点</button>
+                </div>
+              </div>
+              ${(noteHighlightRanges(note, 'chineseTranslation')).length ? `
+                <div class="blackline-preview">
+                  <div class="blackline-preview-title">已标记中文重点</div>
+                  <div>${highlightedHtmlFromRanges(note.chineseTranslation || '', noteHighlightRanges(note, 'chineseTranslation'))}</div>
+                </div>
+              ` : ''}
+              <textarea class="note-textarea translation" data-field="chineseTranslation" data-uid="${note.uid}" data-key="${note.uid}:chineseTranslation" placeholder="请在此补充中文翻译。Word 会自动放在原文下方。">${escapeHtml(note.chineseTranslation || '')}</textarea>
             `}
-            <label>需提供的文件（建议文件）</label>
-            <textarea data-field="requestedDocument" data-uid="${note.uid}" data-key="${note.uid}:requestedDocument" placeholder="例如：董事确认、业务合同、发票、审计师圈数、行业顾问确认等。">${escapeHtml(note.requestedDocument || '')}</textarea>
-            <label>提供情况（公司提供文件名）</label>
-            <textarea data-field="companyProvided" data-uid="${note.uid}" data-key="${note.uid}:companyProvided" placeholder="可留空，发给公司后由公司填写。">${escapeHtml(note.companyProvided || '')}</textarea>
-            <label>公司回复 / 备注</label>
-            <textarea data-field="remarks" data-uid="${note.uid}" data-key="${note.uid}:remarks">${escapeHtml(note.remarks || '')}</textarea>
           </td>
           <td>
             <div class="table-actions">
@@ -1368,6 +1482,7 @@
         body.appendChild(tr);
       }
       body.querySelectorAll('input, textarea').forEach(el => el.addEventListener('input', onFieldChange));
+      body.querySelectorAll('.highlight-btn').forEach(el => el.addEventListener('mousedown', event => event.preventDefault()));
       body.querySelectorAll('button').forEach(el => el.addEventListener('click', onTableAction));
       if (activeKey) {
         const next = document.querySelector('[data-key="' + activeKey + '"]');
@@ -1388,8 +1503,14 @@
       if (!note) return;
       if (field === 'page') note.page = Number(event.target.value || 1);
       else note[field] = event.target.value;
-      if (field === 'anchorText') note.translationStatus = '';
-      if (field === 'chineseTranslation' && event.target.value.trim()) note.translationStatus = 'done';
+      if (field === 'anchorText') {
+        note.translationStatus = '';
+        if (note.highlightRanges) note.highlightRanges.anchorText = [];
+      }
+      if (field === 'chineseTranslation' && event.target.value.trim()) {
+        note.translationStatus = 'done';
+        if (note.highlightRanges) note.highlightRanges.chineseTranslation = [];
+      }
       renderNotes();
     }
 
@@ -1401,6 +1522,14 @@
       if (action === 'delete') {
         state.notes = state.notes.filter(n => n.uid !== uid);
         updateTable();
+      }
+      if (action === 'markHighlight') {
+        markSelectedHighlight(note, event.target.dataset.highlightField);
+      }
+      if (action === 'clearHighlights') {
+        note.highlightRanges = { anchorText: [], chineseTranslation: [] };
+        updateTable(false);
+        toast('已清除该 note 的高亮。');
       }
       if (action === 'goto') {
         const pageData = state.pages.get(Number(note.page));
@@ -1426,7 +1555,7 @@
           const xPx = note.xRatio * pageData.widthPx;
           const selection = paragraphSelectionAt(pageData, xPx, yPx);
           note.anchorText = selection.text || note.anchorText || '';
-          note.blacklineSegments = blacklineSegmentsFromLines(selection.lines);
+          note.highlightRanges = { anchorText: [], chineseTranslation: [] };
           note.selectionMode = 'paragraph';
           note.bbox = selection.bbox || note.bbox || null;
           note.screenshotDataUrl = '';
@@ -1517,9 +1646,9 @@
       return `<w:p><w:pPr><w:jc w:val="${align}"/><w:spacing w:before="${before}" w:after="${after}" w:line="276" w:lineRule="auto"/></w:pPr>${runs.join('')}</w:p>`;
     }
 
-    function wordHighlightedParagraphs(text, segments, options = {}) {
+    function wordHighlightedParagraphs(text, ranges, options = {}) {
       const source = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      const ranges = highlightRangesForText(source, segments);
+      const safeRanges = normalizeRanges(source, ranges);
       const lines = source.split('\n');
       let offset = 0;
       return lines.map(line => {
@@ -1527,7 +1656,7 @@
         const lineEnd = offset + line.length;
         const runs = [];
         let cursor = lineStart;
-        for (const range of ranges) {
+        for (const range of safeRanges) {
           if (range.end <= lineStart || range.start >= lineEnd) continue;
           const start = Math.max(range.start, lineStart);
           const end = Math.min(range.end, lineEnd);
@@ -1576,9 +1705,9 @@
       }
       if (content && typeof content === 'object' && content.kind === 'disclosure') {
         return wordParagraph('【招股书原文】', { color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' }) +
-          wordHighlightedParagraphs(content.anchorText || '', content.blacklineSegments || [], { color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' }) +
+          wordHighlightedParagraphs(content.anchorText || '', content.highlightRanges?.anchorText || [], { color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' }) +
           wordParagraph('【中文翻译】', { color: '000000', size: 19, after: 0, before: 120, align: options.align || 'left' }) +
-          wordParagraphs(content.translation || '（中文翻译待补充）', { color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' });
+          wordHighlightedParagraphs(content.translation || '（中文翻译待补充）', content.highlightRanges?.chineseTranslation || [], { color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' });
       }
       return wordParagraphs(String(content ?? ''), { bold: options.header, color: options.header ? 'FFFFFF' : '000000', size: options.header ? 21 : 19, after: 0, before: 0, align: options.align || 'left' });
     }
@@ -1609,7 +1738,10 @@
       return {
         kind: 'disclosure',
         anchorText: note.anchorText || '',
-        blacklineSegments: note.blacklineSegments || [],
+        highlightRanges: {
+          anchorText: noteHighlightRanges(note, 'anchorText'),
+          chineseTranslation: noteHighlightRanges(note, 'chineseTranslation')
+        },
         translation
       };
     }
@@ -1739,7 +1871,6 @@ ${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://sc
     $('collapseSideBtn').addEventListener('click', toggleIndex);
     $('renumberBtn').addEventListener('click', renumberNotes);
     $('checkTranslateBtn').addEventListener('click', () => checkLocalTranslator(true));
-    $('batchTranslateBtn').addEventListener('click', () => batchTranslateMissing(true));
     $('exportPdfBtn').addEventListener('click', exportAnnotatedPdf);
     $('exportWordBtn').addEventListener('click', exportWord);
     $('clearBtn').addEventListener('click', () => {
