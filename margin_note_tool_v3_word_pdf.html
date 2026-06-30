@@ -67,6 +67,26 @@
       font-size: 12px;
       line-height: 1.2;
     }
+    .header-link {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 6px 12px;
+      border: 1px solid rgba(216, 195, 163, 0.72);
+      border-radius: 999px;
+      color: #f7f0e5;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .header-link:hover {
+      border-color: #d8c3a3;
+      background: rgba(255, 255, 255, 0.12);
+    }
     .layout {
       display: grid;
       grid-template-columns: minmax(820px, 1fr) 470px;
@@ -165,6 +185,12 @@
       overflow: auto;
       max-height: calc(100vh - 178px);
       padding: 16px;
+      border: 2px solid transparent;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .viewer-panel.drag-over {
+      border-color: var(--brand);
+      background: rgba(122, 31, 43, 0.04);
     }
     body.index-collapsed .viewer-panel { max-height: calc(100vh - 165px); }
     .empty {
@@ -175,6 +201,11 @@
       text-align: center;
       background: var(--panel-soft);
       line-height: 1.75;
+    }
+    .viewer-panel.drag-over .empty {
+      border-color: var(--brand);
+      background: #fff8ef;
+      color: var(--brand-dark);
     }
     .page-shell {
       position: relative;
@@ -283,6 +314,29 @@
     .small-input { width: 54px; }
     .table-actions { display: flex; gap: 4px; flex-wrap: wrap; }
     .table-actions button { padding: 4px 6px; font-size: 11px; }
+    .blackline-preview {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fffdf7;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.55;
+      padding: 8px;
+      margin: 6px 0 8px;
+      white-space: normal;
+    }
+    .blackline-preview-title {
+      color: var(--brand);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .blackline-mark {
+      background: #fff176;
+      color: #111;
+      font-weight: 700;
+      padding: 0 1px;
+      border-radius: 2px;
+    }
     .screenshot-preview {
       display: block;
       max-width: 100%;
@@ -344,6 +398,7 @@
       <div class="header-meta">
         <div class="team-name">SS Team</div>
         <div class="team-credit">Created by 小宋</div>
+        <a class="header-link" href="https://kunlins.github.io/Verification-Filing/" target="_blank" rel="noopener noreferrer">Verification Note</a>
       </div>
     </div>
   </header>
@@ -726,8 +781,68 @@
       }
       return lines.map(line => {
         const sortedItems = line.items.sort((a, b) => a.left - b.left);
-        return { y: line.y, top: line.top, bottom: line.bottom, xMin: line.left, xMax: line.right, height: Math.max(line.bottom - line.top, line.height), text: cleanExtractedText(sortedItems.map(i => i.text).join(' ')) };
+        return { y: line.y, top: line.top, bottom: line.bottom, xMin: line.left, xMax: line.right, height: Math.max(line.bottom - line.top, line.height), items: sortedItems, text: cleanExtractedText(sortedItems.map(i => i.text).join(' ')) };
       }).filter(line => line.text).sort((a, b) => a.y - b.y || a.xMin - b.xMin);
+    }
+
+    function detectUnderlinesOnText(canvas, textLines) {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      let data;
+      try {
+        data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      } catch (err) {
+        console.warn('Underline detection skipped:', err);
+        return;
+      }
+      const isDark = (x, y) => {
+        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return false;
+        const idx = ((y * canvas.width) + x) * 4;
+        return data[idx + 3] > 180 && data[idx] < 95 && data[idx + 1] < 95 && data[idx + 2] < 95;
+      };
+      for (const line of textLines) {
+        for (const item of line.items || []) {
+          const left = Math.max(0, Math.floor(item.left - 1));
+          const right = Math.min(canvas.width - 1, Math.ceil(item.right + 1));
+          const width = right - left + 1;
+          if (width < 3) continue;
+          const yStart = Math.max(0, Math.floor(item.bottom - Math.max(4, item.height * 0.45)));
+          const yEnd = Math.min(canvas.height - 1, Math.ceil(item.bottom + Math.max(5, item.height * 0.45)));
+          let bestRun = 0;
+          for (let y = yStart; y <= yEnd; y++) {
+            let run = 0;
+            for (let x = left; x <= right; x++) {
+              if (isDark(x, y) || isDark(x, y - 1) || isDark(x, y + 1)) {
+                run += 1;
+                if (run > bestRun) bestRun = run;
+              } else {
+                run = 0;
+              }
+            }
+          }
+          const minRun = Math.max(3, Math.min(18, width * 0.45));
+          item.underlined = bestRun >= minRun && (bestRun / width) >= 0.28;
+        }
+      }
+    }
+
+    function blacklineSegmentsFromLines(lines) {
+      const segments = [];
+      for (const line of lines || []) {
+        let group = [];
+        for (const item of line.items || []) {
+          if (item.underlined) group.push(item.text);
+          else if (group.length) {
+            const segment = cleanExtractedText(group.join(' '));
+            if (/[A-Za-z0-9\u4e00-\u9fff]/.test(segment)) segments.push(segment);
+            group = [];
+          }
+        }
+        if (group.length) {
+          const segment = cleanExtractedText(group.join(' '));
+          if (/[A-Za-z0-9\u4e00-\u9fff]/.test(segment)) segments.push(segment);
+        }
+      }
+      return segments;
     }
 
     function nearestLineIndex(pageData, yPx, xPx = null) {
@@ -762,6 +877,52 @@
       };
     }
 
+    function lineFromItems(line, items) {
+      const sortedItems = (items || []).slice().sort((a, b) => a.left - b.left);
+      if (!sortedItems.length) return null;
+      const text = cleanExtractedText(sortedItems.map(item => item.text).join(' '));
+      if (!text) return null;
+      return {
+        y: sortedItems.reduce((sum, item) => sum + item.y, 0) / sortedItems.length,
+        top: Math.min(...sortedItems.map(item => item.top)),
+        bottom: Math.max(...sortedItems.map(item => item.bottom)),
+        xMin: Math.min(...sortedItems.map(item => item.left)),
+        xMax: Math.max(...sortedItems.map(item => item.right)),
+        height: Math.max(...sortedItems.map(item => item.height), line.height || 0),
+        items: sortedItems,
+        text
+      };
+    }
+
+    function inferBodyRight(textLines, pageWidth) {
+      const minLongWidth = Math.max(70, pageWidth * 0.16);
+      const rights = [];
+      for (const line of textLines || []) {
+        for (const item of line.items || []) {
+          if (item.width >= minLongWidth && item.left < pageWidth * 0.8) rights.push(item.right);
+        }
+      }
+      rights.sort((a, b) => a - b);
+      if (!rights.length) return pageWidth * 0.88;
+      const idx = Math.max(0, Math.min(rights.length - 1, Math.floor(rights.length * 0.82)));
+      return Math.min(pageWidth * 0.94, rights[idx] + 12);
+    }
+
+    function clipLineByRight(line, rightLimit) {
+      const items = (line.items || []).filter(item => item.left <= rightLimit && item.right <= rightLimit + Math.max(12, item.height));
+      return lineFromItems(line, items);
+    }
+
+    function clipLineByRect(line, rect) {
+      const items = (line.items || []).filter(item =>
+        item.bottom >= rect.top &&
+        item.top <= rect.bottom &&
+        item.right >= rect.left &&
+        item.left <= rect.right
+      );
+      return lineFromItems(line, items);
+    }
+
     function paragraphSelectionAt(pageData, xPx, yPx) {
       const lines = pageData.textLines || [];
       const idx = nearestLineIndex(pageData, yPx, xPx);
@@ -786,7 +947,10 @@
         if (Math.abs(next.xMin - cur.xMin) > 260 && gap > typicalHeight * 0.55) break;
         end++;
       }
-      const selectedLines = lines.slice(start, end + 1);
+      const rightLimit = pageData.bodyRightPx || pageData.widthPx * 0.88;
+      const selectedLines = lines.slice(start, end + 1)
+        .map(line => clipLineByRight(line, rightLimit))
+        .filter(Boolean);
       return { text: joinLines(selectedLines), lines: selectedLines, bbox: bboxFromLines(selectedLines) };
     }
 
@@ -795,7 +959,11 @@
       const right = Math.max(rect.x1, rect.x2);
       const top = Math.min(rect.y1, rect.y2);
       const bottom = Math.max(rect.y1, rect.y2);
-      const lines = (pageData.textLines || []).filter(line => line.bottom >= top && line.top <= bottom && line.xMax >= left && line.xMin <= right);
+      const bounds = { left, right, top, bottom };
+      const lines = (pageData.textLines || [])
+        .filter(line => line.bottom >= top && line.top <= bottom && line.xMax >= left && line.xMin <= right)
+        .map(line => clipLineByRect(line, bounds))
+        .filter(Boolean);
       return { text: joinLines(lines), lines, bbox: lines.length ? bboxFromLines(lines) : { left, right, top, bottom } };
     }
 
@@ -842,6 +1010,48 @@
       toast('PDF 已加载，可以开始点击或框选标注。');
     }
 
+    async function handlePdfFile(file) {
+      if (!file) return;
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+      if (!isPdf) {
+        toast('请上传 PDF 文件。');
+        return;
+      }
+      try {
+        await loadPdf(file);
+      } catch (err) {
+        console.error(err);
+        toast('PDF 读取失败，请检查文件。');
+      }
+    }
+
+    function setupPdfDropUpload() {
+      const viewer = $('viewer');
+      const prevent = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      ['dragenter', 'dragover'].forEach(type => {
+        viewer.addEventListener(type, (event) => {
+          prevent(event);
+          if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+          viewer.classList.add('drag-over');
+        });
+      });
+      ['dragleave', 'dragend'].forEach(type => {
+        viewer.addEventListener(type, (event) => {
+          prevent(event);
+          viewer.classList.remove('drag-over');
+        });
+      });
+      viewer.addEventListener('drop', async (event) => {
+        prevent(event);
+        viewer.classList.remove('drag-over');
+        const file = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files[0] : null;
+        await handlePdfFile(file);
+      });
+    }
+
     async function renderPage(pageNumber) {
       const page = await state.pdf.getPage(pageNumber);
       const viewport = page.getViewport({ scale: state.scale });
@@ -872,8 +1082,10 @@
       await page.render({ canvasContext: ctx, viewport }).promise;
       const textContent = await page.getTextContent();
       const textLines = extractTextLines(textContent, viewport);
+      detectUnderlinesOnText(canvas, textLines);
       const pdfViewport = page.getViewport({ scale: 1 });
-      const pageData = { pageNumber, page, viewport, pdfWidth: pdfViewport.width, pdfHeight: pdfViewport.height, widthPx: canvas.width, heightPx: canvas.height, shell, canvas, noteLayer, selectionRect, textLines };
+      const bodyRightPx = inferBodyRight(textLines, canvas.width);
+      const pageData = { pageNumber, page, viewport, pdfWidth: pdfViewport.width, pdfHeight: pdfViewport.height, widthPx: canvas.width, heightPx: canvas.height, shell, canvas, noteLayer, selectionRect, textLines, bodyRightPx };
       state.pages.set(pageNumber, pageData);
       canvas.addEventListener('mousedown', (event) => startSelection(event, pageNumber));
     }
@@ -944,8 +1156,14 @@
           state.selecting = null;
           return;
         }
-        if (mode === 'line') selection = { text: nearestText(pageData, sel.startY, sel.startX), lines: [], bbox: null };
-        else selection = paragraphSelectionAt(pageData, sel.startX, sel.startY);
+        if (mode === 'line') {
+          const lineIndex = nearestLineIndex(pageData, sel.startY, sel.startX);
+          const rawLine = lineIndex >= 0 ? pageData.textLines[lineIndex] : null;
+          const line = rawLine ? clipLineByRight(rawLine, pageData.bodyRightPx || pageData.widthPx * 0.88) : null;
+          selection = line ? { text: line.text, lines: [line], bbox: bboxFromLines([line]) } : { text: '', lines: [], bbox: null };
+        } else {
+          selection = paragraphSelectionAt(pageData, sel.startX, sel.startY);
+        }
         addNoteFromSelection(sel.pageNumber, selection, mode, sel.startX, sel.startY);
       }
       state.selecting = null;
@@ -955,6 +1173,7 @@
       const pageData = state.pages.get(pageNumber);
       const center = centerOfSelection(selection, fallbackX, fallbackY);
       const targetText = cleanExtractedText(selection && selection.text ? selection.text : '');
+      const blacklineSegments = selectionMode === 'screenshot' ? [] : blacklineSegmentsFromLines(selection && selection.lines);
       const screenshot = selectionMode === 'screenshot' ? screenshotFromSelection(pageData, selection) : null;
       const note = {
         uid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
@@ -966,6 +1185,7 @@
         selectionMode,
         bbox: selection && selection.bbox ? selection.bbox : null,
         anchorText: selectionMode === 'screenshot' ? '' : targetText,
+        blacklineSegments,
         chineseTranslation: '',
         translationStatus: '',
         screenshotDataUrl: screenshot ? screenshot.dataUrl : '',
@@ -982,6 +1202,8 @@
         toast(screenshot ? '已生成截图 note，Word 将嵌入该选区图片。' : '已生成截图 note，但截图区域无效。');
       } else if (!targetText) {
         toast('已生成 note，但没有抓到文字，可在右侧原文字段手动补充。');
+      } else if (blacklineSegments.length) {
+        toast('已生成 note，并识别到 ' + blacklineSegments.length + ' 处下划线内容。');
       }
       if (selectionMode !== 'screenshot' && targetText && $('autoTranslateNew').checked) {
         checkLocalTranslator(false).then(ready => {
@@ -1062,6 +1284,40 @@
       return labels[status] || status;
     }
 
+    function highlightRangesForText(text, segments) {
+      const source = String(text || '');
+      const ranges = [];
+      const sortedSegments = [...new Set((segments || []).map(s => cleanExtractedText(s)).filter(Boolean))]
+        .sort((a, b) => b.length - a.length);
+      for (const segment of sortedSegments) {
+        let fromIndex = 0;
+        while (fromIndex < source.length) {
+          const index = source.indexOf(segment, fromIndex);
+          if (index < 0) break;
+          const end = index + segment.length;
+          const overlaps = ranges.some(range => index < range.end && end > range.start);
+          if (!overlaps) ranges.push({ start: index, end });
+          fromIndex = end;
+        }
+      }
+      return ranges.sort((a, b) => a.start - b.start);
+    }
+
+    function highlightedHtml(text, segments) {
+      const source = String(text || '');
+      const ranges = highlightRangesForText(source, segments);
+      if (!ranges.length) return escapeHtml(source).replace(/\n/g, '<br>');
+      let out = '';
+      let cursor = 0;
+      for (const range of ranges) {
+        out += escapeHtml(source.slice(cursor, range.start));
+        out += `<mark class="blackline-mark">${escapeHtml(source.slice(range.start, range.end))}</mark>`;
+        cursor = range.end;
+      }
+      out += escapeHtml(source.slice(cursor));
+      return out.replace(/\n/g, '<br>');
+    }
+
     function updateTable(keepFocus = true) {
       sortNotes();
       const body = $('notesBody');
@@ -1084,6 +1340,12 @@
               ${note.screenshotDataUrl ? `<img class="screenshot-preview" src="${note.screenshotDataUrl}" alt="截图 note ${escapeHtml(note.id)}" />` : '<div class="stats">尚未保存截图，请重新框选。</div>'}
             ` : `
               <label>招股书原文</label>
+              ${(note.blacklineSegments || []).length ? `
+                <div class="blackline-preview">
+                  <div class="blackline-preview-title">已识别下划线 / 新增内容</div>
+                  <div>${highlightedHtml(note.anchorText || '', note.blacklineSegments)}</div>
+                </div>
+              ` : ''}
               <textarea data-field="anchorText" data-uid="${note.uid}" data-key="${note.uid}:anchorText">${escapeHtml(note.anchorText || '')}</textarea>
               <label>中文翻译${note.translationStatus ? ' · ' + escapeHtml(translationStatusLabel(note.translationStatus)) : ''}</label>
               <textarea data-field="chineseTranslation" data-uid="${note.uid}" data-key="${note.uid}:chineseTranslation" placeholder="请在此补充中文翻译。Word 会自动放在原文下方。">${escapeHtml(note.chineseTranslation || '')}</textarea>
@@ -1164,6 +1426,7 @@
           const xPx = note.xRatio * pageData.widthPx;
           const selection = paragraphSelectionAt(pageData, xPx, yPx);
           note.anchorText = selection.text || note.anchorText || '';
+          note.blacklineSegments = blacklineSegmentsFromLines(selection.lines);
           note.selectionMode = 'paragraph';
           note.bbox = selection.bbox || note.bbox || null;
           note.screenshotDataUrl = '';
@@ -1229,8 +1492,9 @@
     function wordRun(text, options = {}) {
       const bold = options.bold ? '<w:b/>' : '';
       const color = options.color ? `<w:color w:val="${options.color}"/>` : '';
+      const highlight = options.highlight ? `<w:highlight w:val="${options.highlight}"/>` : '';
       const size = options.size || 20;
-      return `<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="宋体"/>${bold}${color}<w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`;
+      return `<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="宋体"/>${bold}${color}${highlight}<w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`;
     }
 
     function wordParagraph(text, options = {}) {
@@ -1244,6 +1508,38 @@
       const normalized = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       const lines = normalized.split('\n');
       return lines.map(line => wordParagraph(line || ' ', options)).join('');
+    }
+
+    function wordParagraphFromRuns(runs, options = {}) {
+      const align = options.align || 'left';
+      const after = options.after ?? 0;
+      const before = options.before ?? 0;
+      return `<w:p><w:pPr><w:jc w:val="${align}"/><w:spacing w:before="${before}" w:after="${after}" w:line="276" w:lineRule="auto"/></w:pPr>${runs.join('')}</w:p>`;
+    }
+
+    function wordHighlightedParagraphs(text, segments, options = {}) {
+      const source = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const ranges = highlightRangesForText(source, segments);
+      const lines = source.split('\n');
+      let offset = 0;
+      return lines.map(line => {
+        const lineStart = offset;
+        const lineEnd = offset + line.length;
+        const runs = [];
+        let cursor = lineStart;
+        for (const range of ranges) {
+          if (range.end <= lineStart || range.start >= lineEnd) continue;
+          const start = Math.max(range.start, lineStart);
+          const end = Math.min(range.end, lineEnd);
+          if (start > cursor) runs.push(wordRun(source.slice(cursor, start), options));
+          runs.push(wordRun(source.slice(start, end), { ...options, bold: true, highlight: 'yellow' }));
+          cursor = end;
+        }
+        if (cursor < lineEnd) runs.push(wordRun(source.slice(cursor, lineEnd), options));
+        if (!runs.length) runs.push(wordRun(line || ' ', options));
+        offset = lineEnd + 1;
+        return wordParagraphFromRuns(runs, options);
+      }).join('');
     }
 
     function wordImageParagraph(imageIndex, widthPx, heightPx) {
@@ -1278,6 +1574,12 @@
         return wordParagraph('【招股书截图】', { bold: false, color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' }) +
           wordImageParagraph(content.imageIndex, content.width, content.height);
       }
+      if (content && typeof content === 'object' && content.kind === 'disclosure') {
+        return wordParagraph('【招股书原文】', { color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' }) +
+          wordHighlightedParagraphs(content.anchorText || '', content.blacklineSegments || [], { color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' }) +
+          wordParagraph('【中文翻译】', { color: '000000', size: 19, after: 0, before: 120, align: options.align || 'left' }) +
+          wordParagraphs(content.translation || '（中文翻译待补充）', { color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' });
+      }
       return wordParagraphs(String(content ?? ''), { bold: options.header, color: options.header ? 'FFFFFF' : '000000', size: options.header ? 21 : 19, after: 0, before: 0, align: options.align || 'left' });
     }
 
@@ -1304,7 +1606,12 @@
         };
       }
       const translation = note.chineseTranslation && note.chineseTranslation.trim() ? note.chineseTranslation.trim() : '（中文翻译待补充）';
-      return `【招股书原文】\n${note.anchorText || ''}\n\n【中文翻译】\n${translation}`;
+      return {
+        kind: 'disclosure',
+        anchorText: note.anchorText || '',
+        blacklineSegments: note.blacklineSegments || [],
+        translation
+      };
     }
 
     function buildWordDocumentXml(title, tableRows) {
@@ -1426,9 +1733,7 @@ ${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://sc
 
     $('pdfFile').addEventListener('change', async (event) => {
       const file = event.target.files[0];
-      if (!file) return;
-      try { await loadPdf(file); }
-      catch (err) { console.error(err); toast('PDF 读取失败，请检查文件。'); }
+      await handlePdfFile(file);
     });
     $('toggleIndexBtn').addEventListener('click', toggleIndex);
     $('collapseSideBtn').addEventListener('click', toggleIndex);
@@ -1444,6 +1749,7 @@ ${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://sc
       updateTable();
     });
     setupNoteColorControls();
+    setupPdfDropUpload();
     checkLocalTranslator(false);
   </script>
 </body>
