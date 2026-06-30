@@ -3,21 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Prospectus Margin Note Tool</title>
+  <title>Prospectus Verification Workbench</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     :root {
-      --bg: #f5f7fb;
+      --bg: #f4f1ec;
       --panel: #ffffff;
-      --text: #1f2937;
-      --muted: #6b7280;
-      --border: #d1d5db;
-      --blue: #2563eb;
-      --blue-dark: #1d4ed8;
-      --danger: #dc2626;
-      --soft: #eef2ff;
+      --panel-soft: #fbfaf7;
+      --ink: #171717;
+      --text: #24201d;
+      --muted: #706a63;
+      --border: #d8d1c6;
+      --border-strong: #b9ad9d;
+      --brand: #7a1f2b;
+      --brand-dark: #5e1721;
+      --gold: #a57a31;
+      --danger: #b42318;
+      --soft: #f5eadf;
+      --shadow: 0 10px 26px rgba(36, 32, 29, 0.08);
     }
     * { box-sizing: border-box; }
     body {
@@ -27,20 +32,46 @@
       background: var(--bg);
     }
     header {
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 22px;
+      background: linear-gradient(135deg, #171717 0%, #332722 58%, #5e1721 100%);
+      border-bottom: 3px solid var(--gold);
+      padding: 16px 22px;
       position: sticky;
       top: 0;
       z-index: 20;
+      color: #fff;
     }
-    h1 { margin: 0 0 6px; font-size: 21px; }
-    .subtitle { color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+    }
+    h1 { margin: 0 0 5px; font-size: 22px; font-weight: 700; letter-spacing: 0; }
+    .subtitle { color: #e8e2d8; font-size: 13px; line-height: 1.5; }
+    .header-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+      justify-content: flex-end;
+      min-width: 260px;
+    }
+    .team-name {
+      color: #f7f0e5;
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .team-credit {
+      color: #d8c3a3;
+      font-size: 12px;
+      line-height: 1.2;
+    }
     .layout {
       display: grid;
       grid-template-columns: minmax(820px, 1fr) 470px;
-      gap: 14px;
-      padding: 14px;
+      gap: 16px;
+      padding: 16px;
       align-items: start;
     }
     body.index-collapsed .layout { grid-template-columns: 1fr; }
@@ -48,15 +79,35 @@
     .panel {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-soft);
+    }
+    .panel-heading h2 {
+      margin: 0;
+      font-size: 15px;
+      color: var(--ink);
+    }
+    .panel-note {
+      color: var(--muted);
+      font-size: 12px;
     }
     .toolbar {
-      padding: 14px;
+      padding: 14px 16px;
       display: grid;
       grid-template-columns: repeat(6, minmax(120px, 1fr));
-      gap: 10px;
+      gap: 12px;
       align-items: end;
+      background: #fff;
     }
     .field { display: flex; flex-direction: column; gap: 5px; }
     .checkbox-field {
@@ -68,18 +119,24 @@
     .checkbox-field input { margin: 0; }
     .status-text {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--brand);
       min-height: 18px;
       align-self: end;
+      font-weight: 700;
     }
-    label { font-size: 12px; color: var(--muted); font-weight: 600; }
+    label { font-size: 12px; color: #5f5850; font-weight: 700; }
     input[type="text"], input[type="number"], select, textarea {
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
       padding: 8px 10px;
       font-size: 13px;
       background: #fff;
       color: var(--text);
+    }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(165, 122, 49, 0.14);
     }
     textarea { min-height: 58px; resize: vertical; line-height: 1.42; }
     input[type="file"] { font-size: 12px; }
@@ -88,20 +145,21 @@
       background: #fff;
       color: var(--text);
       padding: 8px 10px;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 13px;
       cursor: pointer;
       white-space: nowrap;
     }
-    button:hover { background: #f9fafb; }
-    .primary { background: var(--blue); color: #fff; border-color: var(--blue); }
-    .primary:hover { background: var(--blue-dark); }
+    button:hover { background: var(--panel-soft); border-color: var(--border-strong); }
+    .primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .primary:hover { background: var(--brand-dark); }
     .danger { color: var(--danger); border-color: #fecaca; }
     .button-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      padding: 0 14px 14px;
+      padding: 0 16px 16px;
+      background: #fff;
     }
     .viewer-panel {
       overflow: auto;
@@ -111,11 +169,11 @@
     body.index-collapsed .viewer-panel { max-height: calc(100vh - 165px); }
     .empty {
       border: 1px dashed var(--border);
-      border-radius: 12px;
+      border-radius: 8px;
       padding: 42px 20px;
       color: var(--muted);
       text-align: center;
-      background: #fbfdff;
+      background: var(--panel-soft);
       line-height: 1.75;
     }
     .page-shell {
@@ -143,7 +201,7 @@
       left: 6px;
       font-size: 11px;
       font-weight: 700;
-      color: #111827;
+      color: var(--brand-dark);
       line-height: 14px;
       cursor: ns-resize;
       user-select: none;
@@ -157,8 +215,30 @@
       left: 64px;
       width: 3px;
       height: 30px;
-      background: #111827;
+      background: var(--brand-dark);
       border-radius: 1px;
+    }
+    .color-swatches {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      min-height: 52px;
+    }
+    .color-swatch {
+      width: 30px;
+      height: 30px;
+      border: 2px solid #fff;
+      border-radius: 999px;
+      box-shadow: 0 0 0 1px var(--border);
+      cursor: pointer;
+    }
+    .color-swatch.selected {
+      box-shadow: 0 0 0 3px rgba(139, 30, 45, 0.24), 0 0 0 1px var(--brand-dark);
+    }
+    .color-swatch:focus-visible {
+      outline: 3px solid rgba(139, 30, 45, 0.28);
+      outline-offset: 2px;
     }
     .page-label {
       position: absolute;
@@ -173,8 +253,8 @@
     }
     .selection-rect {
       position: absolute;
-      border: 2px solid var(--blue);
-      background: rgba(37, 99, 235, 0.12);
+      border: 2px solid var(--brand);
+      background: rgba(122, 31, 43, 0.11);
       pointer-events: none;
       display: none;
       z-index: 6;
@@ -183,39 +263,49 @@
       max-height: calc(100vh - 28px);
       overflow: auto;
       position: sticky;
-      top: 84px;
+      top: 94px;
     }
     .side-header {
-      padding: 14px;
+      padding: 14px 16px;
       border-bottom: 1px solid var(--border);
+      background: var(--panel-soft);
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       gap: 12px;
     }
-    .side-header h2 { margin: 0 0 6px; font-size: 18px; }
+    .side-header h2 { margin: 0 0 6px; font-size: 17px; color: var(--ink); }
     .stats { color: var(--muted); font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { border-bottom: 1px solid var(--border); padding: 8px; vertical-align: top; }
-    th { background: #f9fafb; text-align: left; color: #374151; position: sticky; top: 0; z-index: 5; }
+    th { background: #f6f1ea; text-align: left; color: #3b342e; position: sticky; top: 0; z-index: 5; }
     .note-id-input { width: 76px; font-weight: 700; }
     .small-input { width: 54px; }
     .table-actions { display: flex; gap: 4px; flex-wrap: wrap; }
     .table-actions button { padding: 4px 6px; font-size: 11px; }
+    .screenshot-preview {
+      display: block;
+      max-width: 100%;
+      max-height: 180px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      margin: 6px 0 8px;
+    }
     .help {
       padding: 12px 14px;
       border-top: 1px solid var(--border);
       color: var(--muted);
       font-size: 12px;
       line-height: 1.65;
-      background: #fbfdff;
+      background: var(--panel-soft);
     }
     .pill {
       display: inline-block;
       padding: 1px 6px;
       border-radius: 999px;
-      background: #e0e7ff;
-      color: #3730a3;
+      background: #efe1cd;
+      color: var(--brand-dark);
       font-size: 11px;
       font-weight: 700;
     }
@@ -224,7 +314,7 @@
       left: 50%;
       bottom: 24px;
       transform: translateX(-50%);
-      background: #111827;
+      background: #1f1b18;
       color: #fff;
       padding: 10px 14px;
       border-radius: 999px;
@@ -236,6 +326,8 @@
     }
     .toast.show { opacity: 1; }
     @media (max-width: 1200px) {
+      .masthead { align-items: flex-start; flex-direction: column; gap: 10px; }
+      .header-meta { justify-content: flex-start; align-items: flex-start; min-width: 0; }
       .layout { grid-template-columns: 1fr; }
       .side-panel { position: static; max-height: none; }
       .toolbar { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
@@ -244,15 +336,27 @@
 </head>
 <body>
   <header>
-    <h1>Prospectus Margin Note Tool</h1>
-    <div class="subtitle">上传 PDF 后，可以单击段落自动抓取整段文字，或拖拽框选任意区域生成编号。输出只保留带 margin notes 的 PDF 和 Word 验证清单。右侧 Index 可以收起，以便扩大 PDF 操作区。</div>
+    <div class="masthead">
+      <div>
+        <h1>Prospectus Verification Workbench</h1>
+        <div class="subtitle">招股书披露验证工作台，用于生成 margin notes、中文翻译草稿及 Word 验证清单。</div>
+      </div>
+      <div class="header-meta">
+        <div class="team-name">SS Team</div>
+        <div class="team-credit">Created by 小宋</div>
+      </div>
+    </div>
   </header>
 
   <main class="layout">
     <section class="panel">
+      <div class="panel-heading">
+        <h2>Matter Setup</h2>
+        <div class="panel-note">上传招股书 PDF 后开始圈注。</div>
+      </div>
       <div class="toolbar">
         <div class="field">
-          <label>上传 PDF</label>
+          <label>招股书 PDF</label>
           <input id="pdfFile" type="file" accept="application/pdf" />
         </div>
         <div class="field">
@@ -260,6 +364,7 @@
           <select id="captureMode">
             <option value="paragraph" selected>单击抓取整段，拖拽框选区域</option>
             <option value="line">单击仅抓取附近一行，拖拽框选区域</option>
+            <option value="screenshot">截图模式：拖拽框选表格或图示</option>
           </select>
         </div>
         <div class="field">
@@ -279,12 +384,17 @@
           <input id="startNo" type="number" value="1" min="1" />
         </div>
         <div class="field">
-          <label>PDF 左侧 note X 坐标</label>
-          <input id="marginX" type="number" value="14" min="0" />
-        </div>
-        <div class="field">
-          <label>PDF note 字号</label>
-          <input id="fontSize" type="number" value="7" min="4" max="20" />
+          <label>Margin note 颜色</label>
+          <input id="pdfNoteColor" type="hidden" value="#8B1E2D" />
+          <div class="color-swatches" id="pdfNoteColorSwatches" aria-label="选择 margin note 颜色">
+            <button class="color-swatch selected" type="button" data-color="#8B1E2D" style="background: #8B1E2D;" title="酒红色" aria-label="酒红色"></button>
+            <button class="color-swatch" type="button" data-color="#D92D20" style="background: #D92D20;" title="红色" aria-label="红色"></button>
+            <button class="color-swatch" type="button" data-color="#2563EB" style="background: #2563EB;" title="蓝色" aria-label="蓝色"></button>
+            <button class="color-swatch" type="button" data-color="#16A34A" style="background: #16A34A;" title="绿色" aria-label="绿色"></button>
+            <button class="color-swatch" type="button" data-color="#F97316" style="background: #F97316;" title="橙色" aria-label="橙色"></button>
+            <button class="color-swatch" type="button" data-color="#7C3AED" style="background: #7C3AED;" title="紫色" aria-label="紫色"></button>
+            <button class="color-swatch" type="button" data-color="#111111" style="background: #111111;" title="黑色" aria-label="黑色"></button>
+          </div>
         </div>
         <div class="field checkbox-field">
           <input id="autoTranslateNew" type="checkbox" checked />
@@ -302,15 +412,15 @@
         <button id="renumberBtn">按页面顺序重新编号</button>
         <button id="checkTranslateBtn">检查本机翻译</button>
         <button id="batchTranslateBtn">批量翻译未翻译项</button>
-        <button id="exportPdfBtn" class="primary">导出带 margin notes 的 PDF</button>
+        <button id="exportPdfBtn" class="primary">导出 PDF margin notes</button>
         <button id="exportWordBtn" class="primary">导出 Word 验证清单</button>
         <button id="clearBtn" class="danger">清空全部 notes</button>
       </div>
 
       <div class="viewer-panel" id="viewer">
         <div class="empty">
-          请先上传 PDF。上传后可以单击正文段落生成 margin note，或按住鼠标拖拽框选整段、表格行、多段文字。<br />
-          生成后可以拖动左侧 note 上下调整位置。Word 导出会使用右侧 Index 中保存的原文、中文翻译、建议文件和备注。
+          请上传招股书 PDF。<br />
+          圈注生成后，右侧 Index 会同步记录原文、翻译草稿、验证文件要求及公司回复栏。
         </div>
       </div>
     </section>
@@ -318,7 +428,7 @@
     <aside class="panel side-panel">
       <div class="side-header">
         <div>
-          <h2>Verification Index</h2>
+          <h2>Disclosure Verification Index</h2>
           <div class="stats" id="stats">尚未生成 note。</div>
         </div>
         <button id="collapseSideBtn">收起</button>
@@ -337,13 +447,9 @@
         </table>
       </div>
       <div class="help">
-        <span class="pill">使用方法</span><br />
-        1. 上传 PDF。<br />
-        2. 单击普通正文，系统会尽量抓取整段。<br />
-        3. 如需精确控制范围，直接拖拽框选整段、表格行或多段文字。<br />
-        4. 右侧 Index 可收起，收起后 PDF 操作区会自动变宽。<br />
-        5. Word 清单会按照“序号、招股书披露内容、需提供文件、提供情况、公司回复/备注”的表格格式导出。<br /><br />
-        安装本机翻译服务后，系统会把圈选段落发到本机 127.0.0.1 翻译接口，中文结果会填入右侧“中文翻译”栏，导出前仍可人工修改。
+        <span class="pill">Verification workflow</span><br />
+        单击正文抓取段落；拖拽可精确框选表格行或多段披露。遇到表格、图示或版面复杂内容，可切换“截图模式”后拖拽框选，Word 清单会直接嵌入截图。<br /><br />
+        翻译仅调用本机 127.0.0.1 服务，结果为初稿，可在导出前复核修订。
       </div>
     </aside>
   </main>
@@ -408,6 +514,32 @@
         .replace(/[\\/:*?"<>|]/g, '')
         .replace(/\s+/g, ' ')
         .trim() || '验证清单';
+    }
+
+    function hexToPdfRgb(value) {
+      const match = String(value || '#000000').trim().match(/^#?([0-9a-fA-F]{6})$/);
+      const hex = match ? match[1] : '000000';
+      const r = parseInt(hex.slice(0, 2), 16) / 255;
+      const g = parseInt(hex.slice(2, 4), 16) / 255;
+      const b = parseInt(hex.slice(4, 6), 16) / 255;
+      return { r, g, b };
+    }
+
+    function getSelectedNoteColor() {
+      return $('pdfNoteColor').value || '#8B1E2D';
+    }
+
+    function setupNoteColorControls() {
+      const colorInput = $('pdfNoteColor');
+      document.querySelectorAll('#pdfNoteColorSwatches .color-swatch').forEach((button) => {
+        button.addEventListener('click', () => {
+          colorInput.value = button.dataset.color || '#8B1E2D';
+          document.querySelectorAll('#pdfNoteColorSwatches .color-swatch').forEach((item) => {
+            item.classList.toggle('selected', item === button);
+          });
+          renderNotes();
+        });
+      });
     }
 
     function nextNoteId() {
@@ -673,6 +805,27 @@
       return { x: (bbox.left + bbox.right) / 2, y: (bbox.top + bbox.bottom) / 2 };
     }
 
+    function screenshotFromSelection(pageData, selection) {
+      const bbox = selection && selection.bbox;
+      if (!pageData || !bbox) return null;
+      const left = Math.max(0, Math.floor(bbox.left));
+      const top = Math.max(0, Math.floor(bbox.top));
+      const right = Math.min(pageData.widthPx, Math.ceil(bbox.right));
+      const bottom = Math.min(pageData.heightPx, Math.ceil(bbox.bottom));
+      const width = Math.max(1, right - left);
+      const height = Math.max(1, bottom - top);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(pageData.canvas, left, top, width, height, 0, 0, width, height);
+      return {
+        dataUrl: canvas.toDataURL('image/png'),
+        width,
+        height
+      };
+    }
+
     async function loadPdf(file) {
       state.pdfArrayBuffer = await file.arrayBuffer();
       state.fileName = file.name || 'document.pdf';
@@ -772,10 +925,25 @@
       pageData.selectionRect.style.display = 'none';
       let selection;
       if (sel.moved && Math.abs(sel.currentX - sel.startX) > 8 && Math.abs(sel.currentY - sel.startY) > 8) {
-        selection = selectionFromRect(pageData, { x1: sel.startX, y1: sel.startY, x2: sel.currentX, y2: sel.currentY });
-        addNoteFromSelection(sel.pageNumber, selection, 'area', (sel.startX + sel.currentX) / 2, (sel.startY + sel.currentY) / 2);
+        const mode = $('captureMode').value;
+        if (mode === 'screenshot') {
+          const left = Math.min(sel.startX, sel.currentX);
+          const right = Math.max(sel.startX, sel.currentX);
+          const top = Math.min(sel.startY, sel.currentY);
+          const bottom = Math.max(sel.startY, sel.currentY);
+          selection = { text: '', lines: [], bbox: { left, right, top, bottom } };
+          addNoteFromSelection(sel.pageNumber, selection, 'screenshot', (left + right) / 2, (top + bottom) / 2);
+        } else {
+          selection = selectionFromRect(pageData, { x1: sel.startX, y1: sel.startY, x2: sel.currentX, y2: sel.currentY });
+          addNoteFromSelection(sel.pageNumber, selection, 'area', (sel.startX + sel.currentX) / 2, (sel.startY + sel.currentY) / 2);
+        }
       } else {
         const mode = $('captureMode').value;
+        if (mode === 'screenshot') {
+          toast('截图模式请拖拽框选表格或图示区域。');
+          state.selecting = null;
+          return;
+        }
         if (mode === 'line') selection = { text: nearestText(pageData, sel.startY, sel.startX), lines: [], bbox: null };
         else selection = paragraphSelectionAt(pageData, sel.startX, sel.startY);
         addNoteFromSelection(sel.pageNumber, selection, mode, sel.startX, sel.startY);
@@ -787,6 +955,7 @@
       const pageData = state.pages.get(pageNumber);
       const center = centerOfSelection(selection, fallbackX, fallbackY);
       const targetText = cleanExtractedText(selection && selection.text ? selection.text : '');
+      const screenshot = selectionMode === 'screenshot' ? screenshotFromSelection(pageData, selection) : null;
       const note = {
         uid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
         id: nextNoteId(),
@@ -796,9 +965,12 @@
         xRatio: Math.max(0.01, Math.min(0.99, center.x / pageData.widthPx)),
         selectionMode,
         bbox: selection && selection.bbox ? selection.bbox : null,
-        anchorText: targetText,
+        anchorText: selectionMode === 'screenshot' ? '' : targetText,
         chineseTranslation: '',
         translationStatus: '',
+        screenshotDataUrl: screenshot ? screenshot.dataUrl : '',
+        screenshotWidth: screenshot ? screenshot.width : 0,
+        screenshotHeight: screenshot ? screenshot.height : 0,
         requestedDocument: '',
         companyProvided: '',
         remarks: ''
@@ -806,8 +978,12 @@
       state.notes.push(note);
       renderNotes();
       updateTable();
-      if (!targetText) toast('已生成 note，但没有抓到文字，可在右侧原文字段手动补充。');
-      if (targetText && $('autoTranslateNew').checked) {
+      if (selectionMode === 'screenshot') {
+        toast(screenshot ? '已生成截图 note，Word 将嵌入该选区图片。' : '已生成截图 note，但截图区域无效。');
+      } else if (!targetText) {
+        toast('已生成 note，但没有抓到文字，可在右侧原文字段手动补充。');
+      }
+      if (selectionMode !== 'screenshot' && targetText && $('autoTranslateNew').checked) {
         checkLocalTranslator(false).then(ready => {
           if (ready) translateNote(note);
         });
@@ -819,6 +995,7 @@
     }
 
     function renderNotes() {
+      const noteColor = getSelectedNoteColor();
       for (const pageData of state.pages.values()) pageData.noteLayer.innerHTML = '';
       for (const note of state.notes) {
         const pageData = state.pages.get(Number(note.page));
@@ -829,6 +1006,7 @@
         tag.textContent = note.id;
         tag.title = '拖动调整位置';
         tag.style.top = (y - 7) + 'px';
+        tag.style.color = noteColor;
         tag.dataset.uid = note.uid;
         tag.addEventListener('mousedown', (event) => startDrag(event, note.uid));
         tag.addEventListener('click', (event) => {
@@ -839,6 +1017,7 @@
         const bar = document.createElement('div');
         bar.className = 'note-bar';
         bar.style.top = (y - 15) + 'px';
+        bar.style.background = noteColor;
         pageData.noteLayer.appendChild(bar);
         pageData.noteLayer.appendChild(tag);
       }
@@ -900,10 +1079,15 @@
           </td>
           <td><input class="small-input" data-field="page" data-uid="${note.uid}" data-key="${note.uid}:page" type="number" value="${note.page}" min="1" /></td>
           <td>
-            <label>招股书原文</label>
-            <textarea data-field="anchorText" data-uid="${note.uid}" data-key="${note.uid}:anchorText">${escapeHtml(note.anchorText || '')}</textarea>
-            <label>中文翻译${note.translationStatus ? ' · ' + escapeHtml(translationStatusLabel(note.translationStatus)) : ''}</label>
-            <textarea data-field="chineseTranslation" data-uid="${note.uid}" data-key="${note.uid}:chineseTranslation" placeholder="请在此补充中文翻译。Word 会自动放在原文下方。">${escapeHtml(note.chineseTranslation || '')}</textarea>
+            ${note.selectionMode === 'screenshot' ? `
+              <label>招股书截图</label>
+              ${note.screenshotDataUrl ? `<img class="screenshot-preview" src="${note.screenshotDataUrl}" alt="截图 note ${escapeHtml(note.id)}" />` : '<div class="stats">尚未保存截图，请重新框选。</div>'}
+            ` : `
+              <label>招股书原文</label>
+              <textarea data-field="anchorText" data-uid="${note.uid}" data-key="${note.uid}:anchorText">${escapeHtml(note.anchorText || '')}</textarea>
+              <label>中文翻译${note.translationStatus ? ' · ' + escapeHtml(translationStatusLabel(note.translationStatus)) : ''}</label>
+              <textarea data-field="chineseTranslation" data-uid="${note.uid}" data-key="${note.uid}:chineseTranslation" placeholder="请在此补充中文翻译。Word 会自动放在原文下方。">${escapeHtml(note.chineseTranslation || '')}</textarea>
+            `}
             <label>需提供的文件（建议文件）</label>
             <textarea data-field="requestedDocument" data-uid="${note.uid}" data-key="${note.uid}:requestedDocument" placeholder="例如：董事确认、业务合同、发票、审计师圈数、行业顾问确认等。">${escapeHtml(note.requestedDocument || '')}</textarea>
             <label>提供情况（公司提供文件名）</label>
@@ -914,8 +1098,8 @@
           <td>
             <div class="table-actions">
               <button data-action="goto" data-uid="${note.uid}">定位</button>
-              <button data-action="recapture" data-uid="${note.uid}">重抓整段</button>
-              <button data-action="translate" data-uid="${note.uid}">翻译</button>
+              <button data-action="recapture" data-uid="${note.uid}">${note.selectionMode === 'screenshot' ? '重截图片' : '重抓整段'}</button>
+              ${note.selectionMode === 'screenshot' ? '' : `<button data-action="translate" data-uid="${note.uid}">翻译</button>`}
               <button data-action="delete" data-uid="${note.uid}" class="danger">删除</button>
             </div>
           </td>`;
@@ -963,12 +1147,28 @@
       if (action === 'recapture') {
         const pageData = state.pages.get(Number(note.page));
         if (pageData) {
+          if (note.selectionMode === 'screenshot') {
+            const screenshot = screenshotFromSelection(pageData, { bbox: note.bbox });
+            if (screenshot) {
+              note.screenshotDataUrl = screenshot.dataUrl;
+              note.screenshotWidth = screenshot.width;
+              note.screenshotHeight = screenshot.height;
+              updateTable();
+              toast('已按原框选区域重新截图。');
+            } else {
+              toast('原截图区域无效，请重新框选。');
+            }
+            return;
+          }
           const yPx = note.yRatio * pageData.heightPx;
           const xPx = note.xRatio * pageData.widthPx;
           const selection = paragraphSelectionAt(pageData, xPx, yPx);
           note.anchorText = selection.text || note.anchorText || '';
           note.selectionMode = 'paragraph';
           note.bbox = selection.bbox || note.bbox || null;
+          note.screenshotDataUrl = '';
+          note.screenshotWidth = 0;
+          note.screenshotHeight = 0;
           note.translationStatus = '';
           updateTable();
           toast('已按当前位置重新抓取整段文字。');
@@ -1004,8 +1204,10 @@
       const { PDFDocument, StandardFonts, rgb } = PDFLib;
       const pdfDoc = await PDFDocument.load(state.pdfArrayBuffer.slice(0));
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const marginX = Number($('marginX').value || 14);
-      const fontSize = Number($('fontSize').value || 7);
+      const marginX = 14;
+      const fontSize = 7;
+      const noteColor = hexToPdfRgb(getSelectedNoteColor());
+      const pdfNoteColor = rgb(noteColor.r, noteColor.g, noteColor.b);
       for (const note of state.notes) {
         const pageIndex = Number(note.page) - 1;
         if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
@@ -1013,8 +1215,8 @@
         const size = pdfPage.getSize();
         const y = size.height - (note.yRatio * size.height);
         const safeY = Math.max(8, Math.min(size.height - 8, y));
-        pdfPage.drawText(note.id, { x: marginX, y: safeY - fontSize / 2, size: fontSize, font, color: rgb(0, 0, 0) });
-        pdfPage.drawLine({ start: { x: marginX + 46, y: safeY - 14 }, end: { x: marginX + 46, y: safeY + 14 }, thickness: 1.2, color: rgb(0, 0, 0) });
+        pdfPage.drawText(note.id, { x: marginX, y: safeY - fontSize / 2, size: fontSize, font, color: pdfNoteColor });
+        pdfPage.drawLine({ start: { x: marginX + 46, y: safeY - 14 }, end: { x: marginX + 46, y: safeY + 14 }, thickness: 1.2, color: pdfNoteColor });
       }
       const bytes = await pdfDoc.save();
       downloadBlob(new Blob([bytes], { type: 'application/pdf' }), baseName(state.fileName) + '_margin_notes.pdf');
@@ -1044,10 +1246,45 @@
       return lines.map(line => wordParagraph(line || ' ', options)).join('');
     }
 
+    function wordImageParagraph(imageIndex, widthPx, heightPx) {
+      const pxToEmu = 9525;
+      const naturalCx = Math.max(1, Math.round((widthPx || 1) * pxToEmu));
+      const naturalCy = Math.max(1, Math.round((heightPx || 1) * pxToEmu));
+      const maxCx = 3900000;
+      const scale = naturalCx > maxCx ? maxCx / naturalCx : 1;
+      const cx = Math.round(naturalCx * scale);
+      const cy = Math.round(naturalCy * scale);
+      return `<w:p><w:pPr><w:spacing w:before="80" w:after="80"/></w:pPr><w:r><w:drawing>
+<wp:inline distT="0" distB="0" distL="0" distR="0">
+  <wp:extent cx="${cx}" cy="${cy}"/>
+  <wp:effectExtent l="0" t="0" r="0" b="0"/>
+  <wp:docPr id="${imageIndex}" name="Disclosure screenshot ${imageIndex}"/>
+  <wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>
+  <a:graphic>
+    <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+      <pic:pic>
+        <pic:nvPicPr><pic:cNvPr id="${imageIndex}" name="screenshot_${imageIndex}.png"/><pic:cNvPicPr/></pic:nvPicPr>
+        <pic:blipFill><a:blip r:embed="rIdImg${imageIndex}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
+        <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
+      </pic:pic>
+    </a:graphicData>
+  </a:graphic>
+</wp:inline>
+</w:drawing></w:r></w:p>`;
+    }
+
+    function wordCellBody(content, options = {}) {
+      if (content && typeof content === 'object' && content.kind === 'screenshot') {
+        return wordParagraph('【招股书截图】', { bold: false, color: '000000', size: 19, after: 0, before: 0, align: options.align || 'left' }) +
+          wordImageParagraph(content.imageIndex, content.width, content.height);
+      }
+      return wordParagraphs(String(content ?? ''), { bold: options.header, color: options.header ? 'FFFFFF' : '000000', size: options.header ? 21 : 19, after: 0, before: 0, align: options.align || 'left' });
+    }
+
     function wordCell(text, width, options = {}) {
       const fill = options.fill ? `<w:shd w:fill="${options.fill}"/>` : '';
       const vAlign = options.header ? 'center' : 'top';
-      const paragraphs = wordParagraphs(String(text ?? ''), { bold: options.header, color: options.header ? 'FFFFFF' : '000000', size: options.header ? 21 : 19, after: 0, before: 0, align: options.align || 'left' });
+      const paragraphs = wordCellBody(text, options);
       return `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/><w:vAlign w:val="${vAlign}"/>${fill}<w:tcMar><w:top w:w="90" w:type="dxa"/><w:left w:w="110" w:type="dxa"/><w:bottom w:w="90" w:type="dxa"/><w:right w:w="110" w:type="dxa"/></w:tcMar></w:tcPr>${paragraphs}</w:tc>`;
     }
 
@@ -1056,7 +1293,16 @@
       return `<w:tr>${cells.map((cell, index) => wordCell(cell, widths[index], { header: isHeader, fill: isHeader ? '8F2B2F' : '' })).join('')}</w:tr>`;
     }
 
-    function disclosureCell(note) {
+    function disclosureCell(note, imageIndex = null) {
+      if (note.selectionMode === 'screenshot') {
+        if (!imageIndex) return '【招股书截图】\n（截图待补充，请重新框选。）';
+        return {
+          kind: 'screenshot',
+          imageIndex,
+          width: note.screenshotWidth || 1,
+          height: note.screenshotHeight || 1
+        };
+      }
       const translation = note.chineseTranslation && note.chineseTranslation.trim() ? note.chineseTranslation.trim() : '（中文翻译待补充）';
       return `【招股书原文】\n${note.anchorText || ''}\n\n【中文翻译】\n${translation}`;
     }
@@ -1070,7 +1316,7 @@
       ];
       const bodyRows = tableRows.map(row => wordRow([row.id, row.disclosure, row.requestedDocument, row.companyProvided, row.remarks])).join('');
       return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
   <w:body>
     ${wordParagraph(title, { bold: true, size: 28, align: 'center', after: 220 })}
     ${intro.map(p => wordParagraph(p, { size: 21, after: 80 })).join('')}
@@ -1101,6 +1347,14 @@
 </w:document>`;
     }
 
+    function dataUrlToUint8Array(dataUrl) {
+      const base64 = String(dataUrl || '').split(',')[1] || '';
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
     async function exportWord() {
       if (!state.notes.length) {
         toast('请先生成至少一个 note。');
@@ -1115,9 +1369,21 @@
       const projectName = $('projectName').value.trim() || 'XX项目';
       const sectionName = $('sectionName').value.trim() || '业务部分';
       const title = `${projectName}招股书验证需求文件清单（${sectionName}）`;
+      const images = [];
       const tableRows = state.notes.map(note => ({
         id: note.id || '',
-        disclosure: disclosureCell(note),
+        disclosure: (() => {
+          if (note.selectionMode === 'screenshot' && note.screenshotDataUrl) {
+            const imageIndex = images.length + 1;
+            images.push({
+              index: imageIndex,
+              fileName: `screenshot_${imageIndex}.png`,
+              dataUrl: note.screenshotDataUrl
+            });
+            return disclosureCell(note, imageIndex);
+          }
+          return disclosureCell(note);
+        })(),
         requestedDocument: note.requestedDocument || '',
         companyProvided: note.companyProvided || '',
         remarks: note.remarks || ''
@@ -1127,6 +1393,7 @@
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
 </Types>`);
       zip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1135,7 +1402,13 @@
 </Relationships>`);
       zip.folder('word').file('document.xml', buildWordDocumentXml(title, tableRows));
       zip.folder('word').folder('_rels').file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`);
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${image.fileName}"/>`).join('\n')}
+</Relationships>`);
+      if (images.length) {
+        const media = zip.folder('word').folder('media');
+        for (const image of images) media.file(image.fileName, dataUrlToUint8Array(image.dataUrl));
+      }
       const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       downloadBlob(blob, sanitizeFileName(title) + '.docx');
     }
@@ -1170,6 +1443,7 @@
       state.counter = Number($('startNo').value || 1);
       updateTable();
     });
+    setupNoteColorControls();
     checkLocalTranslator(false);
   </script>
 </body>
