@@ -9,32 +9,59 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     :root {
-      --bg: #f4f1ec;
+      --bg: #8f2b2f;
       --panel: #ffffff;
-      --panel-soft: #fbfaf7;
+      --panel-soft: #fff8ef;
       --ink: #171717;
       --text: #24201d;
       --muted: #706a63;
-      --border: #d8d1c6;
-      --border-strong: #b9ad9d;
-      --brand: #7a1f2b;
-      --brand-dark: #5e1721;
-      --gold: #a57a31;
+      --border: #e4d5c6;
+      --border-strong: #c7ad84;
+      --brand: #8f2b2f;
+      --brand-dark: #762226;
+      --gold: #d6b06d;
+      --gold-soft: #f0dfbe;
+      --steel: #5d91a1;
+      --steel-soft: #d9e9ee;
       --danger: #b42318;
       --soft: #f5eadf;
-      --shadow: 0 10px 26px rgba(36, 32, 29, 0.08);
+      --shadow: 0 22px 58px rgba(58, 14, 17, 0.22);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
       color: var(--text);
-      background: var(--bg);
+      background:
+        radial-gradient(circle at 16% 10%, rgba(214, 176, 109, 0.16), transparent 28%),
+        radial-gradient(circle at 86% 4%, rgba(255, 248, 239, 0.12), transparent 24%),
+        linear-gradient(135deg, rgba(118, 34, 38, 0.98), rgba(143, 43, 47, 0.96)),
+        var(--bg);
+      background-attachment: fixed;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #pointCloudBg {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.58;
+    }
+    header, main, .toast {
+      position: relative;
+      z-index: 1;
     }
     header {
-      background: linear-gradient(135deg, #171717 0%, #332722 58%, #5e1721 100%);
-      border-bottom: 3px solid var(--gold);
-      padding: 16px 22px;
+      background:
+        linear-gradient(90deg, rgba(22, 12, 13, 0.94), rgba(118, 34, 38, 0.76)),
+        linear-gradient(135deg, rgba(22, 12, 13, 0.86), rgba(118, 34, 38, 0.62));
+      border-bottom: 1px solid rgba(214, 176, 109, 0.72);
+      box-shadow: 0 18px 46px rgba(42, 7, 10, 0.22);
+      backdrop-filter: blur(12px);
+      padding: 18px 28px;
       position: sticky;
       top: 0;
       z-index: 20;
@@ -43,10 +70,46 @@
     .masthead {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 24px;
     }
-    h1 { margin: 0 0 5px; font-size: 22px; font-weight: 700; letter-spacing: 0; }
+    .brand-block {
+      min-width: 0;
+    }
+    .firm-logo {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 5px;
+      color: #fff;
+      line-height: 1;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+    }
+    .firm-cn {
+      font-family: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+    .firm-rule {
+      display: block;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.88), rgba(214,176,109,0.36));
+    }
+    .firm-en {
+      font-size: 17px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .product-title {
+      margin-top: 16px;
+      padding-left: 14px;
+      border-left: 3px solid rgba(214, 176, 109, 0.82);
+    }
+    h1 { margin: 0 0 5px; font-size: 24px; font-weight: 700; letter-spacing: 0; }
     .subtitle { color: #e8e2d8; font-size: 13px; line-height: 1.5; }
     .header-meta {
       display: flex;
@@ -67,12 +130,41 @@
       font-size: 12px;
       line-height: 1.2;
     }
-    .header-link {
+    .translator-notice {
       margin-top: 8px;
+      width: 100%;
+      max-width: 360px;
+      padding: 8px 10px;
+      border: 1px solid rgba(216, 195, 163, 0.72);
+      border-radius: 8px;
+      background: rgba(216, 195, 163, 0.14);
+      color: #f7e3bd;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+      text-align: right;
+    }
+    .verification-guide {
+      width: 100%;
+      max-width: 360px;
+      color: rgba(255, 248, 239, 0.82);
+      font-size: 11px;
+      line-height: 1.45;
+      text-align: right;
+    }
+    .motto {
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .header-link {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 32px;
+      width: 172px;
+      min-height: 34px;
       padding: 6px 12px;
       border: 1px solid rgba(216, 195, 163, 0.72);
       border-radius: 999px;
@@ -93,13 +185,18 @@
       justify-content: flex-end;
       gap: 8px;
       margin-top: 8px;
+      width: 100%;
     }
     .download-menu {
       position: relative;
     }
     .download-menu summary {
       list-style: none;
-      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 172px;
+      min-height: 34px;
       padding: 6px 12px;
       border: 1px solid rgba(216, 195, 163, 0.72);
       border-radius: 999px;
@@ -145,17 +242,18 @@
       display: grid;
       grid-template-columns: minmax(820px, 1fr) 470px;
       gap: 16px;
-      padding: 16px;
+      padding: 22px 26px 28px;
       align-items: start;
     }
     body.index-collapsed .layout { grid-template-columns: 1fr; }
     body.index-collapsed .side-panel { display: none; }
     .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
+      background: rgba(255, 253, 248, 0.95);
+      border: 1px solid rgba(216, 176, 109, 0.38);
       border-radius: 8px;
       box-shadow: var(--shadow);
       overflow: hidden;
+      backdrop-filter: blur(3px);
     }
     .panel-heading {
       display: flex;
@@ -164,7 +262,7 @@
       gap: 12px;
       padding: 13px 16px;
       border-bottom: 1px solid var(--border);
-      background: var(--panel-soft);
+      background: linear-gradient(180deg, rgba(255, 250, 242, 0.96), rgba(255, 248, 239, 0.88));
     }
     .panel-heading h2 {
       margin: 0;
@@ -178,12 +276,47 @@
     .toolbar {
       padding: 14px 16px;
       display: grid;
-      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
       gap: 12px;
       align-items: end;
-      background: #fff;
+      background: rgba(255, 255, 255, 0.94);
     }
     .field { display: flex; flex-direction: column; gap: 5px; }
+    .step-field {
+      border: 1px solid rgba(199, 173, 132, 0.62);
+      border-radius: 8px;
+      padding: 10px;
+      background: linear-gradient(180deg, rgba(255, 250, 242, 0.96), rgba(255, 255, 255, 0.84));
+      box-shadow: inset 0 2px 0 rgba(93, 145, 161, 0.08);
+    }
+    .step-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 5px;
+      color: var(--brand-dark);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+    .field-hint {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
     .checkbox-field {
       flex-direction: row;
       align-items: center;
@@ -204,7 +337,7 @@
       border-radius: 6px;
       padding: 8px 10px;
       font-size: 13px;
-      background: #fff;
+      background: rgba(255, 255, 255, 0.94);
       color: var(--text);
     }
     input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
@@ -224,7 +357,7 @@
     input[type="file"] { font-size: 12px; }
     button {
       border: 1px solid var(--border);
-      background: #fff;
+      background: rgba(255, 255, 255, 0.94);
       color: var(--text);
       padding: 8px 10px;
       border-radius: 6px;
@@ -233,15 +366,20 @@
       white-space: nowrap;
     }
     button:hover { background: var(--panel-soft); border-color: var(--border-strong); }
-    .primary { background: var(--brand); color: #fff; border-color: var(--brand); }
-    .primary:hover { background: var(--brand-dark); }
+    .primary {
+      background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+      color: #fff;
+      border-color: rgba(118, 34, 38, 0.95);
+      box-shadow: 0 8px 18px rgba(118, 34, 38, 0.2);
+    }
+    .primary:hover { background: linear-gradient(135deg, var(--brand-dark), #5f171b); }
     .danger { color: var(--danger); border-color: #fecaca; }
     .button-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       padding: 0 16px 16px;
-      background: #fff;
+      background: rgba(255, 253, 248, 0.94);
     }
     .viewer-panel {
       overflow: auto;
@@ -256,12 +394,13 @@
     }
     body.index-collapsed .viewer-panel { max-height: calc(100vh - 165px); }
     .empty {
-      border: 1px dashed var(--border);
+      border: 1px dashed rgba(199, 173, 132, 0.78);
       border-radius: 8px;
       padding: 42px 20px;
       color: var(--muted);
       text-align: center;
-      background: var(--panel-soft);
+      background:
+        linear-gradient(180deg, rgba(255, 250, 242, 0.92), rgba(255, 255, 255, 0.76));
       line-height: 1.75;
     }
     .viewer-panel.drag-over .empty {
@@ -361,7 +500,7 @@
     .side-header {
       padding: 14px 16px;
       border-bottom: 1px solid var(--border);
-      background: var(--panel-soft);
+      background: linear-gradient(180deg, rgba(255, 250, 242, 0.96), rgba(255, 248, 239, 0.88));
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -371,7 +510,7 @@
     .stats { color: var(--muted); font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { border-bottom: 1px solid var(--border); padding: 8px; vertical-align: top; }
-    th { background: #f6f1ea; text-align: left; color: #3b342e; position: sticky; top: 0; z-index: 5; }
+    th { background: #f6efe4; text-align: left; color: #3b342e; position: sticky; top: 0; z-index: 5; }
     .note-id-input { width: 76px; font-weight: 700; }
     .small-input { width: 54px; }
     .table-actions { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -462,6 +601,9 @@
     @media (max-width: 1200px) {
       .masthead { align-items: flex-start; flex-direction: column; gap: 10px; }
       .header-meta { justify-content: flex-start; align-items: flex-start; min-width: 0; }
+      .translator-notice { text-align: left; }
+      .verification-guide { text-align: left; }
+      .header-actions { justify-content: flex-start; }
       .layout { grid-template-columns: 1fr; }
       .side-panel { position: static; max-height: none; }
       .toolbar { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
@@ -469,15 +611,25 @@
   </style>
 </head>
 <body>
+  <canvas id="pointCloudBg" aria-hidden="true"></canvas>
   <header>
     <div class="masthead">
-      <div>
-        <h1>Prospectus Verification Workbench</h1>
-        <div class="subtitle">招股书披露验证工作台，用于生成 margin notes、中文翻译草稿及 Word 验证清单。</div>
+      <div class="brand-block">
+        <div class="firm-logo" aria-label="競天公誠律師事務所 Jingtian & Gongcheng">
+          <span class="firm-cn">競天公誠律師事務所</span>
+          <span class="firm-rule"></span>
+          <span class="firm-en">Jingtian &amp; Gongcheng</span>
+        </div>
+        <div class="product-title">
+          <h1>Prospectus Verification Workbench</h1>
+          <div class="subtitle">招股书披露验证工作台，用于生成 margin notes、中文翻译草稿及 Word 验证清单。</div>
+        </div>
       </div>
       <div class="header-meta">
         <div class="team-name">SS Team</div>
+        <div class="motto">专业&nbsp;&nbsp;平等&nbsp;&nbsp;包容&nbsp;&nbsp;合作</div>
         <div class="team-credit">Created by 小宋</div>
+        <div class="translator-notice">第一次使用前，请先下载并安装本机翻译器。</div>
         <div class="header-actions">
           <details class="download-menu">
             <summary>Download Translator</summary>
@@ -488,6 +640,7 @@
           </details>
           <a class="header-link" href="https://kunlins.github.io/Verification-Filing/" target="_blank" rel="noopener noreferrer">Verification Note</a>
         </div>
+        <div class="verification-guide">完成验证文件收集后，请点击进入生成验证笔记的网站。</div>
       </div>
     </div>
   </header>
@@ -499,29 +652,33 @@
         <div class="panel-note">上传招股书 PDF 后开始圈注。</div>
       </div>
       <div class="toolbar">
-        <div class="field">
-          <label>招股书 PDF</label>
-          <input id="pdfFile" type="file" accept="application/pdf" />
+        <div class="field step-field">
+          <div class="step-label"><span class="step-badge">1</span><span>填写项目名称</span></div>
+          <input id="projectName" type="text" value="XX项目" />
+          <div class="field-hint">用于 Word 清单标题和文件名。</div>
         </div>
-        <div class="field">
-          <label>文字抓取模式</label>
+        <div class="field step-field">
+          <div class="step-label"><span class="step-badge">2</span><span>填写编号前缀</span></div>
+          <input id="prefix" type="text" value="B" />
+          <div class="field-hint">例如业务部分可用 B，风险因素可用 R。</div>
+        </div>
+        <div class="field step-field">
+          <div class="step-label"><span class="step-badge">3</span><span>填写章节名称</span></div>
+          <input id="sectionName" type="text" value="业务部分" />
+          <div class="field-hint">会显示在右侧 Index 的每个 note 下方。</div>
+        </div>
+        <div class="field step-field">
+          <div class="step-label"><span class="step-badge">4</span><span>选择抓取模式</span></div>
           <select id="captureMode">
             <option value="paragraph" selected>单击抓取整段，拖拽框选区域</option>
             <option value="line">单击仅抓取附近一行，拖拽框选区域</option>
             <option value="screenshot">截图模式：拖拽框选表格或图示</option>
           </select>
+          <div class="field-hint">如披露内容是表格、图示或复杂版面，建议选择截图模式。</div>
         </div>
         <div class="field">
-          <label>项目名称</label>
-          <input id="projectName" type="text" value="XX项目" />
-        </div>
-        <div class="field">
-          <label>章节名称</label>
-          <input id="sectionName" type="text" value="业务部分" />
-        </div>
-        <div class="field">
-          <label>编号前缀</label>
-          <input id="prefix" type="text" value="B" />
+          <label>招股书 PDF</label>
+          <input id="pdfFile" type="file" accept="application/pdf" />
         </div>
         <div class="field">
           <label>起始编号</label>
@@ -614,6 +771,196 @@
     };
 
     const $ = (id) => document.getElementById(id);
+
+    function setupPointCloudBackground() {
+      const canvas = $('pointCloudBg');
+      if (!canvas) return;
+      const gl = canvas.getContext('webgl', {
+        alpha: true,
+        antialias: true,
+        depth: false,
+        stencil: false
+      });
+      if (!gl) {
+        canvas.style.display = 'none';
+        return;
+      }
+
+      const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const particleCount = Math.max(90, Math.min(170, Math.round(window.innerWidth * window.innerHeight / 11500)));
+      const particles = Array.from({ length: particleCount }, () => {
+        const depth = 0.35 + Math.random() * 0.65;
+        return {
+          x: Math.random(),
+          y: Math.random(),
+          vx: (Math.random() - 0.5) * 0.006 * depth,
+          vy: (Math.random() - 0.5) * 0.004 * depth,
+          size: 1.2 + Math.random() * 2.4,
+          alpha: 0.16 + Math.random() * 0.28,
+          depth
+        };
+      });
+
+      function compileShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          throw new Error(gl.getShaderInfoLog(shader) || 'WebGL shader compile failed');
+        }
+        return shader;
+      }
+
+      function createProgram(vertexSource, fragmentSource) {
+        const program = gl.createProgram();
+        gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexSource));
+        gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentSource));
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          throw new Error(gl.getProgramInfoLog(program) || 'WebGL program link failed');
+        }
+        return program;
+      }
+
+      const pointProgram = createProgram(`
+        attribute vec2 a_position;
+        attribute float a_alpha;
+        attribute float a_size;
+        varying float v_alpha;
+        void main() {
+          vec2 clip = a_position * 2.0 - 1.0;
+          gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
+          gl_PointSize = a_size;
+          v_alpha = a_alpha;
+        }
+      `, `
+        precision mediump float;
+        varying float v_alpha;
+        void main() {
+          vec2 center = gl_PointCoord - vec2(0.5);
+          float radius = length(center);
+          if (radius > 0.5) discard;
+          float edge = smoothstep(0.5, 0.18, radius);
+          gl_FragColor = vec4(1.0, 0.84, 0.48, v_alpha * edge);
+        }
+      `);
+
+      const lineProgram = createProgram(`
+        attribute vec2 a_position;
+        attribute float a_alpha;
+        varying float v_alpha;
+        void main() {
+          vec2 clip = a_position * 2.0 - 1.0;
+          gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
+          v_alpha = a_alpha;
+        }
+      `, `
+        precision mediump float;
+        varying float v_alpha;
+        void main() {
+          gl_FragColor = vec4(0.97, 0.76, 0.42, v_alpha);
+        }
+      `);
+
+      const pointBuffer = gl.createBuffer();
+      const lineBuffer = gl.createBuffer();
+      const pointLoc = {
+        position: gl.getAttribLocation(pointProgram, 'a_position'),
+        alpha: gl.getAttribLocation(pointProgram, 'a_alpha'),
+        size: gl.getAttribLocation(pointProgram, 'a_size')
+      };
+      const lineLoc = {
+        position: gl.getAttribLocation(lineProgram, 'a_position'),
+        alpha: gl.getAttribLocation(lineProgram, 'a_alpha')
+      };
+
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.max(1, Math.floor(window.innerWidth * dpr));
+        const height = Math.max(1, Math.floor(window.innerHeight * dpr));
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+          canvas.style.width = `${window.innerWidth}px`;
+          canvas.style.height = `${window.innerHeight}px`;
+          gl.viewport(0, 0, width, height);
+        }
+      }
+
+      function drawFrame(delta) {
+        resize();
+        const width = canvas.width || 1;
+        const height = canvas.height || 1;
+        const aspect = width / height;
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        if (!reducedMotion) {
+          const seconds = Math.min(delta || 16, 40) / 1000;
+          for (const particle of particles) {
+            particle.x += particle.vx * seconds;
+            particle.y += particle.vy * seconds;
+            if (particle.x < -0.02) particle.x = 1.02;
+            if (particle.x > 1.02) particle.x = -0.02;
+            if (particle.y < -0.02) particle.y = 1.02;
+            if (particle.y > 1.02) particle.y = -0.02;
+          }
+        }
+
+        const lineData = [];
+        const maxDistance = 0.145;
+        for (let i = 0; i < particles.length; i += 1) {
+          for (let j = i + 1; j < particles.length; j += 1) {
+            const a = particles[i];
+            const b = particles[j];
+            const dx = (a.x - b.x) * aspect;
+            const dy = a.y - b.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < maxDistance) {
+              const alpha = (1 - distance / maxDistance) * 0.11 * Math.min(a.depth, b.depth);
+              lineData.push(a.x, a.y, alpha, b.x, b.y, alpha);
+            }
+          }
+        }
+
+        gl.useProgram(lineProgram);
+        gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineData), gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(lineLoc.position);
+        gl.vertexAttribPointer(lineLoc.position, 2, gl.FLOAT, false, 12, 0);
+        gl.enableVertexAttribArray(lineLoc.alpha);
+        gl.vertexAttribPointer(lineLoc.alpha, 1, gl.FLOAT, false, 12, 8);
+        gl.drawArrays(gl.LINES, 0, lineData.length / 3);
+
+        const pointData = [];
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        for (const particle of particles) {
+          pointData.push(particle.x, particle.y, particle.alpha, particle.size * dpr);
+        }
+        gl.useProgram(pointProgram);
+        gl.bindBuffer(gl.ARRAY_BUFFER, pointBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointData), gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(pointLoc.position);
+        gl.vertexAttribPointer(pointLoc.position, 2, gl.FLOAT, false, 16, 0);
+        gl.enableVertexAttribArray(pointLoc.alpha);
+        gl.vertexAttribPointer(pointLoc.alpha, 1, gl.FLOAT, false, 16, 8);
+        gl.enableVertexAttribArray(pointLoc.size);
+        gl.vertexAttribPointer(pointLoc.size, 1, gl.FLOAT, false, 16, 12);
+        gl.drawArrays(gl.POINTS, 0, pointData.length / 4);
+      }
+
+      let lastTime = 0;
+      function animate(time) {
+        drawFrame(time - lastTime);
+        lastTime = time;
+        if (!reducedMotion) requestAnimationFrame(animate);
+      }
+
+      window.addEventListener('resize', () => drawFrame(0));
+      requestAnimationFrame(animate);
+    }
 
     function toast(message) {
       const el = $('toast');
@@ -1881,6 +2228,7 @@ ${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://sc
     });
     setupNoteColorControls();
     setupPdfDropUpload();
+    setupPointCloudBackground();
     checkLocalTranslator(false);
   </script>
 </body>
