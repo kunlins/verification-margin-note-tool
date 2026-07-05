@@ -1,2 +1,2 @@
-argostranslate>=1.9.6
+argostranslate==1.9.6
 certifi>=2024.8.30
