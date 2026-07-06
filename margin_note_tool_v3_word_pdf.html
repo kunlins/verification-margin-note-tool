@@ -1030,8 +1030,18 @@
 
     function nextNoteId() {
       const prefix = $('prefix').value.trim() || 'B';
-      const id = prefix + state.counter;
-      state.counter += 1;
+      const startNo = Number($('startNo').value || 1);
+      let maxExisting = startNo - 1;
+      for (const note of state.notes) {
+        const value = String(note.id || '').trim();
+        if (!value.startsWith(prefix)) continue;
+        const suffix = value.slice(prefix.length);
+        if (!/^\d+$/.test(suffix)) continue;
+        maxExisting = Math.max(maxExisting, Number(suffix));
+      }
+      const nextNumber = Math.max(startNo, maxExisting + 1);
+      const id = prefix + nextNumber;
+      state.counter = nextNumber + 1;
       return id;
     }
 
@@ -1868,7 +1878,9 @@
       if (!note) return;
       if (action === 'delete') {
         state.notes = state.notes.filter(n => n.uid !== uid);
-        updateTable();
+        renumberNotes({ showToast: false, keepFocus: false });
+        toast('已删除该 note，并自动重新编号。');
+        return;
       }
       if (action === 'markHighlight') {
         markSelectedHighlight(note, event.target.dataset.highlightField);
@@ -1921,7 +1933,9 @@
       }
     }
 
-    function renumberNotes() {
+    function renumberNotes(options = {}) {
+      const showToast = options.showToast !== false;
+      const keepFocus = options.keepFocus !== false;
       const prefix = $('prefix').value.trim() || 'B';
       let current = Number($('startNo').value || 1);
       sortNotes();
@@ -1930,8 +1944,8 @@
         current += 1;
       }
       state.counter = current;
-      updateTable();
-      toast('已按页面顺序重新编号。');
+      updateTable(keepFocus);
+      if (showToast) toast('已按页面顺序重新编号。');
     }
 
     async function exportAnnotatedPdf() {
