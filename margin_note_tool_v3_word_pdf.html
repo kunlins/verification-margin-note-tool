@@ -281,6 +281,76 @@
       align-items: end;
       background: rgba(255, 255, 255, 0.94);
     }
+    .workflow-mode-band {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 253, 248, 0.94);
+    }
+    .workflow-mode-copy {
+      min-width: 0;
+    }
+    .workflow-mode-title {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .workflow-mode-hint {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .mode-switch {
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      flex: 0 0 auto;
+      padding: 3px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      background: #f7eee3;
+    }
+    .mode-switch button {
+      min-width: 128px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      box-shadow: none;
+    }
+    .mode-switch button.active {
+      background: var(--brand);
+      color: #fff;
+    }
+    .existing-word-controls {
+      display: grid;
+      grid-template-columns: minmax(260px, 1.2fr) minmax(220px, 0.8fr) minmax(260px, 1fr);
+      gap: 12px;
+      align-items: end;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, rgba(240, 223, 190, 0.24), rgba(255, 255, 255, 0.94));
+    }
+    .existing-word-controls[hidden] { display: none; }
+    .checklist-status-box {
+      min-height: 58px;
+      padding: 9px 11px;
+      border-left: 3px solid var(--gold);
+      background: rgba(255, 248, 239, 0.82);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .checklist-status-box strong {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--brand-dark);
+      font-size: 12px;
+    }
     .field { display: flex; flex-direction: column; gap: 5px; }
     .step-field {
       border: 1px solid rgba(199, 173, 132, 0.62);
@@ -508,9 +578,122 @@
     }
     .side-header h2 { margin: 0 0 6px; font-size: 17px; color: var(--ink); }
     .stats { color: var(--muted); font-size: 12px; }
+    .existing-checklist-wrap {
+      border-bottom: 1px solid var(--border);
+      background: #fffdf8;
+    }
+    .existing-checklist-wrap[hidden] { display: none; }
+    .existing-checklist-tools {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: #f8f0e5;
+    }
+    .existing-checklist-tools label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--brand-dark);
+    }
+    .existing-checklist-tools input { width: 100%; }
+    .existing-checklist-list {
+      max-height: 310px;
+      overflow: auto;
+      padding: 8px;
+    }
+    .existing-row {
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      margin-bottom: 7px;
+    }
+    .existing-row:last-child { margin-bottom: 0; }
+    .existing-row.selected-anchor {
+      border-color: var(--gold);
+      box-shadow: inset 3px 0 0 var(--gold);
+      background: #fffaf0;
+    }
+    .existing-row.pending-delete {
+      border-color: #f3b1aa;
+      background: #fff5f3;
+      opacity: 0.72;
+    }
+    .existing-row.pending-delete .existing-row-text {
+      text-decoration: line-through;
+    }
+    .existing-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+    .existing-row-id {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .change-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #efe2cf;
+      color: var(--brand-dark);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .change-badge.delete {
+      background: #fee4e2;
+      color: var(--danger);
+    }
+    .existing-row-text {
+      display: -webkit-box;
+      overflow: hidden;
+      color: #514a44;
+      font-size: 11px;
+      line-height: 1.45;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+    .existing-row-request {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border);
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .existing-row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 7px;
+    }
+    .existing-row-actions button {
+      padding: 4px 7px;
+      font-size: 10px;
+    }
+    .insert-context {
+      margin: 0 0 8px;
+      color: var(--brand-dark);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .request-editor {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border-strong);
+    }
+    .request-editor textarea {
+      width: 100%;
+      min-height: 88px;
+      margin-top: 5px;
+    }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { border-bottom: 1px solid var(--border); padding: 8px; vertical-align: top; }
     th { background: #f6efe4; text-align: left; color: #3b342e; position: sticky; top: 0; z-index: 5; }
+    .added-note-row > td { background: rgba(255, 250, 240, 0.72); }
     .note-id-input { width: 76px; font-weight: 700; }
     .small-input { width: 54px; }
     .table-actions { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -607,6 +790,12 @@
       .layout { grid-template-columns: 1fr; }
       .side-panel { position: static; max-height: none; }
       .toolbar { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .workflow-mode-band { align-items: flex-start; flex-direction: column; }
+      .existing-word-controls { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .mode-switch { width: 100%; }
+      .mode-switch button { min-width: 0; }
     }
   </style>
 </head>
@@ -650,6 +839,35 @@
       <div class="panel-heading">
         <h2>Matter Setup</h2>
         <div class="panel-note">上传招股书 PDF 后开始圈注。</div>
+      </div>
+      <div class="workflow-mode-band">
+        <div class="workflow-mode-copy">
+          <div class="workflow-mode-title">选择工作方式</div>
+          <div class="workflow-mode-hint" id="workflowModeHint">从招股书开始建立一份新的验证清单。</div>
+        </div>
+        <div class="mode-switch" role="tablist" aria-label="选择清单工作方式">
+          <button id="newChecklistModeBtn" class="active" type="button" role="tab" aria-selected="true">新建清单</button>
+          <button id="updateChecklistModeBtn" type="button" role="tab" aria-selected="false">更新现有清单</button>
+        </div>
+      </div>
+      <div class="existing-word-controls" id="existingWordControls" hidden>
+        <div class="field">
+          <label for="existingWordFile">现有 Word 验证清单（.docx）</label>
+          <input id="existingWordFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+          <div class="field-hint">网站只读取本机文件，不会把清单上传到服务器。</div>
+        </div>
+        <div class="field">
+          <label for="insertAfterId">下一项插入位置</label>
+          <select id="insertAfterId" disabled>
+            <option value="">请先上传现有清单</option>
+          </select>
+          <div class="field-hint" id="insertIdHint">抓取新增段落前，先选择插入在哪个编号后面。</div>
+          <button id="addBlankChecklistBtn" type="button" disabled>新增空白项并手工粘贴</button>
+        </div>
+        <div class="checklist-status-box" id="existingChecklistStatus">
+          <strong>尚未读取现有清单</strong>
+          支持网站导出的标准五列 Word 验证清单。
+        </div>
       </div>
       <div class="toolbar">
         <div class="field step-field">
@@ -729,6 +947,13 @@
         </div>
         <button id="collapseSideBtn">收起</button>
       </div>
+      <div class="existing-checklist-wrap" id="existingChecklistWrap" hidden>
+        <div class="existing-checklist-tools">
+          <label for="checklistSearch">现有清单项目</label>
+          <input id="checklistSearch" type="text" placeholder="搜索编号或披露内容" />
+        </div>
+        <div class="existing-checklist-list" id="existingChecklistList"></div>
+      </div>
       <div id="tableWrap">
         <table>
           <thead>
@@ -767,10 +992,18 @@
       selecting: null,
       indexCollapsed: false,
       translateReady: false,
-      translateChecking: false
+      translateChecking: false,
+      checklistMode: 'new',
+      checklistArrayBuffer: null,
+      checklistFileName: '',
+      checklistRows: [],
+      checklistTableIndex: -1,
+      insertAfterId: ''
     };
 
     const $ = (id) => document.getElementById(id);
+    const WORD_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const WORD_XML_NAMESPACES = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:xml="http://www.w3.org/XML/1998/namespace"';
 
     function setupPointCloudBackground() {
       const canvas = $('pointCloudBg');
@@ -1028,7 +1261,345 @@
       });
     }
 
+    function directWordChildren(node, localName) {
+      return Array.from(node?.childNodes || []).filter(child =>
+        child.nodeType === 1 && child.namespaceURI === WORD_NS && child.localName === localName
+      );
+    }
+
+    function wordParagraphPlainText(paragraph) {
+      if (!paragraph) return '';
+      return Array.from(paragraph.getElementsByTagNameNS(WORD_NS, 't'))
+        .map(node => node.textContent || '')
+        .join('');
+    }
+
+    function wordCellPlainText(cell) {
+      const paragraphs = Array.from(cell?.getElementsByTagNameNS(WORD_NS, 'p') || []);
+      if (!paragraphs.length) {
+        return Array.from(cell?.getElementsByTagNameNS(WORD_NS, 't') || [])
+          .map(node => node.textContent || '')
+          .join('')
+          .trim();
+      }
+      return paragraphs.map(wordParagraphPlainText).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    function findChecklistTable(xmlDocument, preferredIndex = -1) {
+      const tables = Array.from(xmlDocument.getElementsByTagNameNS(WORD_NS, 'tbl'));
+      const candidates = preferredIndex >= 0 && tables[preferredIndex]
+        ? [tables[preferredIndex], ...tables.filter((_, index) => index !== preferredIndex)]
+        : tables;
+      for (const table of candidates) {
+        const rows = directWordChildren(table, 'tr');
+        if (!rows.length) continue;
+        const headerCells = directWordChildren(rows[0], 'tc');
+        const headers = headerCells.map(wordCellPlainText);
+        if (
+          headers.length >= 5 &&
+          headers[0].includes('序号') &&
+          headers[1].includes('招股书披露内容') &&
+          headers[2].includes('需提供的文件')
+        ) {
+          return { table, rows, tableIndex: tables.indexOf(table) };
+        }
+      }
+      return null;
+    }
+
+    function parseDisclosureText(value) {
+      const text = String(value || '').trim();
+      const sourceMarker = '【招股书原文】';
+      const translationMarker = '【中文翻译】';
+      const sourceIndex = text.indexOf(sourceMarker);
+      const translationIndex = text.indexOf(translationMarker);
+      if (sourceIndex >= 0 && translationIndex > sourceIndex) {
+        return {
+          anchorText: text.slice(sourceIndex + sourceMarker.length, translationIndex).trim(),
+          chineseTranslation: text.slice(translationIndex + translationMarker.length).trim()
+        };
+      }
+      return { anchorText: text, chineseTranslation: '' };
+    }
+
+    function checklistIdParts(value) {
+      const match = String(value || '').trim().match(/^([^0-9]*)(\d+(?:\.\d+)*)$/);
+      if (!match) return null;
+      return { prefix: match[1], numbers: match[2].split('.').map(Number) };
+    }
+
+    function compareChecklistIds(a, b) {
+      const left = checklistIdParts(a);
+      const right = checklistIdParts(b);
+      if (!left || !right || left.prefix !== right.prefix) {
+        return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+      }
+      for (let i = 0; i < Math.max(left.numbers.length, right.numbers.length); i += 1) {
+        if (i >= left.numbers.length) return -1;
+        if (i >= right.numbers.length) return 1;
+        if (left.numbers[i] !== right.numbers[i]) return left.numbers[i] - right.numbers[i];
+      }
+      return 0;
+    }
+
+    function suggestedInsertedId(anchorId) {
+      const anchor = String(anchorId || '').trim();
+      if (!anchor) return '';
+      const base = anchor.split('.')[0];
+      const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp('^' + escapedBase + '\\.(\\d+)$');
+      const usedIds = [
+        ...state.checklistRows.map(row => row.id),
+        ...state.notes.map(note => note.id)
+      ];
+      let max = 0;
+      for (const id of usedIds) {
+        const match = String(id || '').trim().match(pattern);
+        if (match) max = Math.max(max, Number(match[1]));
+      }
+      return base + '.' + (max + 1);
+    }
+
+    function updateInsertPositionControls() {
+      const select = $('insertAfterId');
+      if (!select) return;
+      const available = state.checklistRows.filter(row => !row.deleted);
+      if (!available.some(row => row.id === state.insertAfterId)) {
+        state.insertAfterId = available.length ? available[available.length - 1].id : '';
+      }
+      select.innerHTML = available.length
+        ? available.map(row => `<option value="${escapeHtml(row.id)}">${escapeHtml(row.id)} 后</option>`).join('')
+        : '<option value="">没有可用的现有项目</option>';
+      select.disabled = !available.length;
+      $('addBlankChecklistBtn').disabled = !available.length;
+      select.value = state.insertAfterId;
+      const suggested = suggestedInsertedId(state.insertAfterId);
+      $('insertIdHint').textContent = suggested
+        ? `下一次抓取将插入在 ${state.insertAfterId} 后，建议编号 ${suggested}。`
+        : '抓取新增段落前，先选择插入在哪个编号后面。';
+    }
+
+    function addBlankChecklistNote() {
+      if (state.checklistMode !== 'update' || !state.checklistRows.length || !state.insertAfterId) {
+        toast('请先上传现有清单并选择插入位置。');
+        return;
+      }
+      const note = {
+        uid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+        id: suggestedInsertedId(state.insertAfterId),
+        section: $('sectionName').value.trim(),
+        page: 1,
+        yRatio: 0.5,
+        xRatio: 0.5,
+        selectionMode: 'manual',
+        bbox: null,
+        anchorText: '',
+        chineseTranslation: '',
+        highlightRanges: { anchorText: [], chineseTranslation: [] },
+        translationStatus: '',
+        screenshotDataUrl: '',
+        screenshotWidth: 0,
+        screenshotHeight: 0,
+        requestedDocument: '',
+        companyProvided: '',
+        remarks: '',
+        changeType: 'added',
+        insertAfterId: state.insertAfterId
+      };
+      state.notes.push(note);
+      updateInsertPositionControls();
+      renderExistingChecklist();
+      updateChecklistSummary();
+      updateTable(false);
+      toast(`已新增 ${note.id}，可在右侧粘贴原文、翻译和验证需求。`);
+    }
+
+    function renderExistingChecklist() {
+      const wrap = $('existingChecklistWrap');
+      const list = $('existingChecklistList');
+      if (!wrap || !list) return;
+      const visible = state.checklistMode === 'update' && state.checklistRows.length > 0;
+      wrap.hidden = !visible;
+      if (!visible) {
+        list.innerHTML = '';
+        return;
+      }
+      const query = ($('checklistSearch').value || '').trim().toLowerCase();
+      const rows = state.checklistRows.filter(row => {
+        if (!query) return true;
+        return [row.id, row.anchorText, row.chineseTranslation, row.requestedDocument]
+          .some(value => String(value || '').toLowerCase().includes(query));
+      });
+      list.innerHTML = rows.map(row => {
+        const sourceText = row.anchorText || row.disclosureText || '（该项目没有可读取的文字内容）';
+        return `<div class="existing-row${row.id === state.insertAfterId ? ' selected-anchor' : ''}${row.deleted ? ' pending-delete' : ''}" data-existing-id="${escapeHtml(row.id)}">
+          <div class="existing-row-top">
+            <span class="existing-row-id">${escapeHtml(row.id)}</span>
+            ${row.deleted ? '<span class="change-badge delete">待删除</span>' : (row.id === state.insertAfterId ? '<span class="change-badge">新增位置</span>' : '')}
+          </div>
+          <div class="existing-row-text">${escapeHtml(sourceText)}</div>
+          ${row.requestedDocument ? `<div class="existing-row-request"><strong>验证需求：</strong>${escapeHtml(row.requestedDocument)}</div>` : ''}
+          <div class="existing-row-actions">
+            ${row.deleted
+              ? `<button type="button" data-existing-action="undoDelete" data-existing-id="${escapeHtml(row.id)}">撤销删除</button>`
+              : `<button type="button" data-existing-action="insertAfter" data-existing-id="${escapeHtml(row.id)}">在后新增</button><button type="button" class="danger" data-existing-action="delete" data-existing-id="${escapeHtml(row.id)}">删除</button>`}
+          </div>
+        </div>`;
+      }).join('') || '<div class="stats" style="padding:8px">没有符合搜索条件的项目。</div>';
+      list.querySelectorAll('button[data-existing-action]').forEach(button => {
+        button.addEventListener('click', onExistingChecklistAction);
+      });
+    }
+
+    function updateChecklistSummary() {
+      const total = state.checklistRows.length;
+      const deleted = state.checklistRows.filter(row => row.deleted).length;
+      const added = state.notes.length;
+      const status = $('existingChecklistStatus');
+      if (!status) return;
+      if (!total) {
+        status.innerHTML = '<strong>尚未读取现有清单</strong>支持网站导出的标准五列 Word 验证清单。';
+        return;
+      }
+      status.innerHTML = `<strong>已读取 ${total} 个现有项目</strong>${added} 个本次新增，${deleted} 个待删除。导出时会保留未改动内容。`;
+    }
+
+    function onExistingChecklistAction(event) {
+      const row = state.checklistRows.find(item => item.id === event.currentTarget.dataset.existingId);
+      if (!row) return;
+      const action = event.currentTarget.dataset.existingAction;
+      if (action === 'insertAfter') {
+        state.insertAfterId = row.id;
+        updateInsertPositionControls();
+        renderExistingChecklist();
+        toast(`下一次抓取将新增在 ${row.id} 后。`);
+        return;
+      }
+      if (action === 'delete') {
+        row.deleted = true;
+        if (state.insertAfterId === row.id) state.insertAfterId = '';
+        updateInsertPositionControls();
+        renderExistingChecklist();
+        updateChecklistSummary();
+        updateTable(false);
+        toast(`${row.id} 已标记为待删除，可随时撤销。`);
+        return;
+      }
+      if (action === 'undoDelete') {
+        row.deleted = false;
+        updateInsertPositionControls();
+        renderExistingChecklist();
+        updateChecklistSummary();
+        updateTable(false);
+        toast(`已撤销删除 ${row.id}。`);
+      }
+    }
+
+    function setChecklistMode(mode, options = {}) {
+      if (!['new', 'update'].includes(mode) || state.checklistMode === mode) return;
+      if (!options.force && state.notes.length && !confirm('切换工作方式会清空当前尚未导出的 notes，是否继续？')) return;
+      state.notes = [];
+      state.counter = Number($('startNo').value || 1);
+      state.checklistMode = mode;
+      const isUpdate = mode === 'update';
+      $('newChecklistModeBtn').classList.toggle('active', !isUpdate);
+      $('updateChecklistModeBtn').classList.toggle('active', isUpdate);
+      $('newChecklistModeBtn').setAttribute('aria-selected', String(!isUpdate));
+      $('updateChecklistModeBtn').setAttribute('aria-selected', String(isUpdate));
+      $('existingWordControls').hidden = !isUpdate;
+      $('workflowModeHint').textContent = isUpdate
+        ? '上传上一版 Word 清单，在原编号之间新增或删除项目。'
+        : '从招股书开始建立一份新的验证清单。';
+      $('renumberBtn').disabled = isUpdate;
+      $('renumberBtn').title = isUpdate ? '更新现有清单时保留原编号，不进行整体重排。' : '';
+      $('exportWordBtn').textContent = isUpdate ? '导出更新后的 Word 清单' : '导出 Word 验证清单';
+      $('clearBtn').textContent = isUpdate ? '清空本次更改' : '清空全部 notes';
+      updateInsertPositionControls();
+      renderExistingChecklist();
+      updateChecklistSummary();
+      updateTable(false);
+    }
+
+    async function handleExistingWordFile(file) {
+      if (!file) return;
+      if (!/\.docx$/i.test(file.name || '')) {
+        toast('请选择 .docx 格式的 Word 验证清单。');
+        return;
+      }
+      if (!window.JSZip) {
+        toast('读取 Word 需要 JSZip，请确认网络可访问 jsDelivr。');
+        return;
+      }
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(arrayBuffer.slice(0));
+        const documentPart = zip.file('word/document.xml');
+        if (!documentPart) throw new Error('Word 文件中缺少 document.xml');
+        const xml = await documentPart.async('string');
+        const documentXml = new DOMParser().parseFromString(xml, 'application/xml');
+        if (documentXml.getElementsByTagName('parsererror').length) throw new Error('无法解析 Word 文档结构');
+        if (
+          documentXml.getElementsByTagNameNS(WORD_NS, 'ins').length ||
+          documentXml.getElementsByTagNameNS(WORD_NS, 'del').length
+        ) {
+          throw new Error('清单含有 Word 修订记录，请先在 Word 中接受所有修订后再上传');
+        }
+        const tableInfo = findChecklistTable(documentXml);
+        if (!tableInfo) throw new Error('没有找到标准五列验证清单表格');
+        const parsedRows = [];
+        for (const [index, rowElement] of tableInfo.rows.slice(1).entries()) {
+          const cells = directWordChildren(rowElement, 'tc');
+          if (cells.length < 5) continue;
+          const id = wordCellPlainText(cells[0]).trim();
+          if (!id) continue;
+          const disclosureText = wordCellPlainText(cells[1]);
+          const disclosure = parseDisclosureText(disclosureText);
+          parsedRows.push({
+            uid: `existing-${index}-${id}`,
+            id,
+            disclosureText,
+            anchorText: disclosure.anchorText,
+            chineseTranslation: disclosure.chineseTranslation,
+            requestedDocument: wordCellPlainText(cells[2]),
+            companyProvided: wordCellPlainText(cells[3]),
+            remarks: wordCellPlainText(cells[4]),
+            deleted: false
+          });
+        }
+        if (!parsedRows.length) throw new Error('清单表格中没有可读取的编号项目');
+        state.checklistArrayBuffer = arrayBuffer;
+        state.checklistFileName = file.name;
+        state.checklistRows = parsedRows;
+        state.checklistTableIndex = tableInfo.tableIndex;
+        state.insertAfterId = parsedRows[parsedRows.length - 1].id;
+        state.notes = [];
+
+        const firstParagraph = Array.from(documentXml.getElementsByTagNameNS(WORD_NS, 'body'))
+          .flatMap(body => directWordChildren(body, 'p'))[0];
+        const title = wordParagraphPlainText(firstParagraph);
+        const titleMatch = title.match(/^(.*?)招股书验证需求文件清单（(.+?)）$/);
+        if (titleMatch) {
+          $('projectName').value = titleMatch[1] || $('projectName').value;
+          $('sectionName').value = titleMatch[2] || $('sectionName').value;
+        }
+        const firstParts = checklistIdParts(parsedRows[0].id);
+        if (firstParts) {
+          $('prefix').value = firstParts.prefix || $('prefix').value;
+          $('startNo').value = String(firstParts.numbers[0] || 1);
+        }
+        updateInsertPositionControls();
+        renderExistingChecklist();
+        updateChecklistSummary();
+        updateTable(false);
+        toast(`已读取 ${parsedRows.length} 个现有清单项目。`);
+      } catch (error) {
+        console.error(error);
+        toast(error.message || '读取现有 Word 清单失败。');
+      }
+    }
+
     function nextNoteId() {
+      if (state.checklistMode === 'update') return suggestedInsertedId(state.insertAfterId);
       const prefix = $('prefix').value.trim() || 'B';
       const startNo = Number($('startNo').value || 1);
       let maxExisting = startNo - 1;
@@ -1552,6 +2123,14 @@
     }
 
     function addNoteFromSelection(pageNumber, selection, selectionMode, fallbackX, fallbackY) {
+      if (state.checklistMode === 'update' && !state.checklistRows.length) {
+        toast('请先上传现有 Word 验证清单，再抓取新增段落。');
+        return;
+      }
+      if (state.checklistMode === 'update' && !state.insertAfterId) {
+        toast('请先选择新增项目要插入在哪个编号后面。');
+        return;
+      }
       const pageData = state.pages.get(pageNumber);
       const center = centerOfSelection(selection, fallbackX, fallbackY);
       const targetText = cleanExtractedText(selection && selection.text ? selection.text : '');
@@ -1574,9 +2153,16 @@
         screenshotHeight: screenshot ? screenshot.height : 0,
         requestedDocument: '',
         companyProvided: '',
-        remarks: ''
+        remarks: '',
+        changeType: state.checklistMode === 'update' ? 'added' : 'new',
+        insertAfterId: state.checklistMode === 'update' ? state.insertAfterId : ''
       };
       state.notes.push(note);
+      if (state.checklistMode === 'update') {
+        updateInsertPositionControls();
+        renderExistingChecklist();
+        updateChecklistSummary();
+      }
       renderNotes();
       updateTable();
       if (selectionMode === 'screenshot') {
@@ -1787,9 +2373,11 @@
       for (const note of state.notes) {
         const tr = document.createElement('tr');
         tr.dataset.rowUid = note.uid;
+        if (note.changeType === 'added') tr.className = 'added-note-row';
         tr.innerHTML = `
           <td>
             <input class="note-id-input" data-field="id" data-uid="${note.uid}" data-key="${note.uid}:id" value="${escapeHtml(note.id)}" />
+            ${note.changeType === 'added' ? `<div style="margin-top:6px"><span class="change-badge">本次新增</span></div>` : ''}
             <div style="margin-top:6px;color:#6b7280">${escapeHtml(note.section || '')}</div>
             <div style="margin-top:4px;color:#9ca3af;font-size:11px">${escapeHtml(note.selectionMode || 'paragraph')}</div>
           </td>
@@ -1826,6 +2414,13 @@
                 </div>
               ` : ''}
               <textarea class="note-textarea translation" data-field="chineseTranslation" data-uid="${note.uid}" data-key="${note.uid}:chineseTranslation" placeholder="请在此补充中文翻译。Word 会自动放在原文下方。">${escapeHtml(note.chineseTranslation || '')}</textarea>
+              ${note.changeType === 'added' ? `
+                <div class="request-editor">
+                  <div class="insert-context">插入位置：${escapeHtml(note.insertAfterId || '')} 后</div>
+                  <label>需提供的文件（建议文件）</label>
+                  <textarea data-field="requestedDocument" data-uid="${note.uid}" data-key="${note.uid}:requestedDocument" placeholder="填写支持该新增披露所需的验证文件。">${escapeHtml(note.requestedDocument || '')}</textarea>
+                </div>
+              ` : ''}
             `}
           </td>
           <td>
@@ -1845,7 +2440,13 @@
         const next = document.querySelector('[data-key="' + activeKey + '"]');
         if (next) next.focus();
       }
-      $('stats').textContent = state.notes.length ? ('已生成 ' + state.notes.length + ' 个 notes。') : '尚未生成 note。';
+      if (state.checklistMode === 'update' && state.checklistRows.length) {
+        const deleted = state.checklistRows.filter(row => row.deleted).length;
+        $('stats').textContent = `${state.checklistRows.length - deleted} 个现有项目，${state.notes.length} 个新增，${deleted} 个待删除。`;
+      } else {
+        $('stats').textContent = state.notes.length ? ('已生成 ' + state.notes.length + ' 个 notes。') : '尚未生成 note。';
+      }
+      if (state.checklistMode === 'update') updateChecklistSummary();
       renderNotes();
     }
 
@@ -1868,6 +2469,10 @@
         note.translationStatus = 'done';
         if (note.highlightRanges) note.highlightRanges.chineseTranslation = [];
       }
+      if (field === 'id' && state.checklistMode === 'update') {
+        updateInsertPositionControls();
+        updateChecklistSummary();
+      }
       renderNotes();
     }
 
@@ -1878,6 +2483,14 @@
       if (!note) return;
       if (action === 'delete') {
         state.notes = state.notes.filter(n => n.uid !== uid);
+        if (state.checklistMode === 'update') {
+          updateInsertPositionControls();
+          renderExistingChecklist();
+          updateChecklistSummary();
+          updateTable(false);
+          toast('已移除本次新增项目，原清单不受影响。');
+          return;
+        }
         renumberNotes({ showToast: false, keepFocus: false });
         toast('已删除该 note，并自动重新编号。');
         return;
@@ -1934,6 +2547,10 @@
     }
 
     function renumberNotes(options = {}) {
+      if (state.checklistMode === 'update') {
+        toast('更新现有清单时保留原编号，不进行整体重新编号。');
+        return;
+      }
       const showToast = options.showToast !== false;
       const keepFocus = options.keepFocus !== false;
       const prefix = $('prefix').value.trim() || 'B';
@@ -2155,7 +2772,157 @@
       return bytes;
     }
 
+    function replaceWordCellBody(documentXml, cell, bodyXml) {
+      const cellProperties = directWordChildren(cell, 'tcPr')[0] || null;
+      for (const child of Array.from(cell.childNodes)) {
+        if (child !== cellProperties) cell.removeChild(child);
+      }
+      const fragmentXml = new DOMParser().parseFromString(
+        `<root ${WORD_XML_NAMESPACES}>${bodyXml || wordParagraph(' ')}</root>`,
+        'application/xml'
+      );
+      if (fragmentXml.getElementsByTagName('parsererror').length) {
+        throw new Error('无法生成新增项目的 Word 内容');
+      }
+      for (const child of Array.from(fragmentXml.documentElement.childNodes)) {
+        if (child.nodeType === 1) cell.appendChild(documentXml.importNode(child, true));
+      }
+    }
+
+    function populateInsertedWordRow(documentXml, rowElement, note, imageIndex = null) {
+      const cells = directWordChildren(rowElement, 'tc');
+      if (cells.length < 5) throw new Error('现有清单行不是标准五列格式');
+      replaceWordCellBody(documentXml, cells[0], wordParagraphs(note.id || ' ', { size: 19 }));
+      replaceWordCellBody(documentXml, cells[1], wordCellBody(disclosureCell(note, imageIndex)));
+      replaceWordCellBody(documentXml, cells[2], wordParagraphs(note.requestedDocument || ' ', { size: 19 }));
+      replaceWordCellBody(documentXml, cells[3], wordParagraphs(note.companyProvided || ' ', { size: 19 }));
+      replaceWordCellBody(documentXml, cells[4], wordParagraphs(note.remarks || ' ', { size: 19 }));
+    }
+
+    function ensurePngContentType(contentTypesXml) {
+      if (/Extension=["']png["']/i.test(contentTypesXml)) return contentTypesXml;
+      return contentTypesXml.replace(
+        '</Types>',
+        '  <Default Extension="png" ContentType="image/png"/>\n</Types>'
+      );
+    }
+
+    async function addUpdatedWordImages(zip, images) {
+      if (!images.length) return;
+      const relPath = 'word/_rels/document.xml.rels';
+      const relPart = zip.file(relPath);
+      let relationshipsXml = relPart
+        ? await relPart.async('string')
+        : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n</Relationships>';
+      const relationshipRows = images.map(image =>
+        `  <Relationship Id="rIdImg${image.index}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${image.fileName}"/>`
+      ).join('\n');
+      relationshipsXml = relationshipsXml.replace('</Relationships>', relationshipRows + '\n</Relationships>');
+      zip.file(relPath, relationshipsXml);
+      const media = zip.folder('word').folder('media');
+      for (const image of images) media.file(image.fileName, dataUrlToUint8Array(image.dataUrl));
+      const contentTypesPart = zip.file('[Content_Types].xml');
+      if (contentTypesPart) {
+        const contentTypesXml = await contentTypesPart.async('string');
+        zip.file('[Content_Types].xml', ensurePngContentType(contentTypesXml));
+      }
+    }
+
+    async function exportUpdatedWord() {
+      if (!state.checklistArrayBuffer || !state.checklistRows.length) {
+        toast('请先上传现有 Word 验证清单。');
+        return;
+      }
+      const deletedRows = state.checklistRows.filter(row => row.deleted);
+      if (!state.notes.length && !deletedRows.length) {
+        toast('目前没有新增或删除内容。');
+        return;
+      }
+      if ($('translateBeforeExport').checked && state.notes.length) await batchTranslateMissing(false);
+
+      const activeExistingIds = state.checklistRows.filter(row => !row.deleted).map(row => row.id.trim());
+      const addedIds = state.notes.map(note => String(note.id || '').trim());
+      if (addedIds.some(id => !id)) {
+        toast('本次新增项目中存在空白编号，请先补充编号。');
+        return;
+      }
+      const allIds = [...activeExistingIds, ...addedIds];
+      const duplicate = allIds.find((id, index) => allIds.indexOf(id) !== index);
+      if (duplicate) {
+        toast(`编号 ${duplicate} 重复，请修改后再导出。`);
+        return;
+      }
+
+      try {
+        const zip = await JSZip.loadAsync(state.checklistArrayBuffer.slice(0));
+        const documentPart = zip.file('word/document.xml');
+        if (!documentPart) throw new Error('现有清单缺少 Word 正文内容');
+        const originalXml = await documentPart.async('string');
+        const documentXml = new DOMParser().parseFromString(originalXml, 'application/xml');
+        if (documentXml.getElementsByTagName('parsererror').length) throw new Error('无法解析现有 Word 清单');
+        const tableInfo = findChecklistTable(documentXml, state.checklistTableIndex);
+        if (!tableInfo) throw new Error('无法再次找到标准五列验证清单表格');
+        const images = [];
+        let imageIndex = 1001;
+
+        const additions = state.notes.slice().sort((a, b) => compareChecklistIds(a.id, b.id));
+        for (const note of additions) {
+          let bodyRows = directWordChildren(tableInfo.table, 'tr').slice(1);
+          const beforeRow = bodyRows.find(row => {
+            const idCell = directWordChildren(row, 'tc')[0];
+            return idCell && compareChecklistIds(wordCellPlainText(idCell).trim(), note.id) > 0;
+          }) || null;
+          const beforeIndex = beforeRow ? bodyRows.indexOf(beforeRow) : bodyRows.length;
+          const templateRow = bodyRows[Math.max(0, beforeIndex - 1)] || bodyRows[0];
+          if (!templateRow) throw new Error('现有清单没有可复制的正文行');
+          const newRow = templateRow.cloneNode(true);
+          let noteImageIndex = null;
+          if (note.selectionMode === 'screenshot' && note.screenshotDataUrl) {
+            while (originalXml.includes(`rIdImg${imageIndex}`)) imageIndex += 1;
+            noteImageIndex = imageIndex;
+            images.push({
+              index: imageIndex,
+              fileName: `update_screenshot_${imageIndex}.png`,
+              dataUrl: note.screenshotDataUrl
+            });
+            imageIndex += 1;
+          }
+          populateInsertedWordRow(documentXml, newRow, note, noteImageIndex);
+          if (beforeRow) tableInfo.table.insertBefore(newRow, beforeRow);
+          else tableInfo.table.appendChild(newRow);
+        }
+
+        const deleteIds = new Set(deletedRows.map(row => row.id));
+        for (const rowElement of directWordChildren(tableInfo.table, 'tr').slice(1)) {
+          const idCell = directWordChildren(rowElement, 'tc')[0];
+          const id = idCell ? wordCellPlainText(idCell).trim() : '';
+          if (deleteIds.has(id)) rowElement.remove();
+        }
+
+        let updatedXml = new XMLSerializer().serializeToString(documentXml);
+        if (!updatedXml.startsWith('<?xml')) {
+          updatedXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + updatedXml;
+        }
+        zip.file('word/document.xml', updatedXml);
+        await addUpdatedWordImages(zip, images);
+        const blob = await zip.generateAsync({
+          type: 'blob',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        });
+        const sourceName = (state.checklistFileName || '验证清单.docx').replace(/\.docx$/i, '');
+        downloadBlob(blob, sanitizeFileName(sourceName + '（更新）') + '.docx');
+        toast(`已导出更新清单：新增 ${state.notes.length} 项，删除 ${deletedRows.length} 项。`);
+      } catch (error) {
+        console.error(error);
+        toast(error.message || '导出更新后的 Word 清单失败。');
+      }
+    }
+
     async function exportWord() {
+      if (state.checklistMode === 'update') {
+        await exportUpdatedWord();
+        return;
+      }
       if (!state.notes.length) {
         toast('请先生成至少一个 note。');
         return;
@@ -2228,6 +2995,18 @@ ${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://sc
       const file = event.target.files[0];
       await handlePdfFile(file);
     });
+    $('newChecklistModeBtn').addEventListener('click', () => setChecklistMode('new'));
+    $('updateChecklistModeBtn').addEventListener('click', () => setChecklistMode('update'));
+    $('existingWordFile').addEventListener('change', async (event) => {
+      await handleExistingWordFile(event.target.files[0]);
+    });
+    $('insertAfterId').addEventListener('change', (event) => {
+      state.insertAfterId = event.target.value;
+      updateInsertPositionControls();
+      renderExistingChecklist();
+    });
+    $('addBlankChecklistBtn').addEventListener('click', addBlankChecklistNote);
+    $('checklistSearch').addEventListener('input', renderExistingChecklist);
     $('toggleIndexBtn').addEventListener('click', toggleIndex);
     $('collapseSideBtn').addEventListener('click', toggleIndex);
     $('renumberBtn').addEventListener('click', renumberNotes);
@@ -2235,6 +3014,16 @@ ${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://sc
     $('exportPdfBtn').addEventListener('click', exportAnnotatedPdf);
     $('exportWordBtn').addEventListener('click', exportWord);
     $('clearBtn').addEventListener('click', () => {
+      if (state.checklistMode === 'update') {
+        if (!confirm('确认清空本次新增内容和删除标记？原 Word 清单不会被修改。')) return;
+        state.notes = [];
+        state.checklistRows.forEach(row => { row.deleted = false; });
+        updateInsertPositionControls();
+        renderExistingChecklist();
+        updateChecklistSummary();
+        updateTable(false);
+        return;
+      }
       if (!confirm('确认清空全部 notes？')) return;
       state.notes = [];
       state.counter = Number($('startNo').value || 1);
