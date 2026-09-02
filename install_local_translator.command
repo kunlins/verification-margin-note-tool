@@ -8,6 +8,8 @@ VENV_DIR="$RUNTIME_DIR/venv"
 PLIST_DIR="$HOME/Library/LaunchAgents"
 PLIST_FILE="$PLIST_DIR/com.prospectus.localtranslator.plist"
 SERVICE_LABEL="com.prospectus.localtranslator"
+TRANSLATOR_PORT="18765"
+TRANSLATOR_URL="http://127.0.0.1:$TRANSLATOR_PORT"
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo "Python 3 was not found. Please install Python 3 first."
@@ -41,6 +43,8 @@ cat > "$PLIST_FILE" <<PLIST
     <string>$VENV_DIR/bin/python</string>
     <string>$RUNTIME_DIR/local_translation_server.py</string>
     <string>--no-browser</string>
+    <string>--port</string>
+    <string>$TRANSLATOR_PORT</string>
   </array>
   <key>WorkingDirectory</key>
   <string>$RUNTIME_DIR</string>
@@ -58,18 +62,27 @@ PLIST
 
 launchctl bootout "gui/$(id -u)" "$PLIST_FILE" >/dev/null 2>&1 || true
 if ! launchctl bootstrap "gui/$(id -u)" "$PLIST_FILE" >/dev/null 2>&1; then
-  launchctl load "$PLIST_FILE" >/dev/null 2>&1 || true
+  if ! launchctl load "$PLIST_FILE" >/dev/null 2>&1; then
+    echo "Failed to register the macOS background service."
+    exit 1
+  fi
 fi
 launchctl kickstart -k "gui/$(id -u)/$SERVICE_LABEL" >/dev/null 2>&1 || true
 
 echo "Waiting for local translation service..."
 for _ in 1 2 3 4 5 6 7 8 9 10; do
-  if curl -fsS "http://127.0.0.1:8765/health" >/dev/null 2>&1; then
+  if curl -fsS "$TRANSLATOR_URL/health" >/dev/null 2>&1; then
     echo "Local translation service is running."
     break
   fi
   sleep 1
 done
+
+if ! curl -fsS "$TRANSLATOR_URL/health" >/dev/null 2>&1; then
+  echo "Local translation service failed to start on port $TRANSLATOR_PORT."
+  echo "Please review /tmp/prospectus-local-translator.log."
+  exit 1
+fi
 
 echo ""
 echo "Installation is complete."

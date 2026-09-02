@@ -993,6 +993,7 @@
       indexCollapsed: false,
       translateReady: false,
       translateChecking: false,
+      translateApiBase: '',
       checklistMode: 'new',
       checklistArrayBuffer: null,
       checklistFileName: '',
@@ -1202,9 +1203,13 @@
       setTimeout(() => el.classList.remove('show'), 1800);
     }
 
+    function translateApiCandidates() {
+      if (['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname)) return [''];
+      return ['http://127.0.0.1:18765', 'http://127.0.0.1:8765'];
+    }
+
     function translateApiBase() {
-      if (['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname)) return '';
-      return 'http://127.0.0.1:8765';
+      return state.translateApiBase || translateApiCandidates()[0];
     }
 
     function setTranslateStatus(message, ready = false) {
@@ -1628,17 +1633,25 @@
       state.translateChecking = true;
       setTranslateStatus('本机翻译：检查中...', false);
       try {
-        const res = await fetch(translateApiBase() + '/health', { method: 'GET' });
-        if (!res.ok) throw new Error('health check failed');
-        const data = await res.json();
-        if (data.ready) {
-          setTranslateStatus('本机翻译：可用', true);
-          if (showToast) toast('本机翻译服务可用。');
-          return true;
+        for (const apiBase of translateApiCandidates()) {
+          try {
+            const res = await fetch(apiBase + '/health', { method: 'GET' });
+            if (!res.ok) continue;
+            const data = await res.json();
+            state.translateApiBase = apiBase;
+            if (data.ready) {
+              setTranslateStatus('本机翻译：可用', true);
+              if (showToast) toast('本机翻译服务可用。');
+              return true;
+            }
+            setTranslateStatus('本机翻译：未安装模型', false);
+            if (showToast) toast(data.message || '本机翻译模型未安装。');
+            return false;
+          } catch (err) {
+            // Try the legacy endpoint so existing installations keep working.
+          }
         }
-        setTranslateStatus('本机翻译：未安装模型', false);
-        if (showToast) toast(data.message || '本机翻译模型未安装。');
-        return false;
+        throw new Error('health check failed');
       } catch (err) {
         setTranslateStatus('本机翻译：未启动', false);
         if (showToast) toast('本机翻译服务未启动，请先运行安装脚本或确认后台服务已启动。');

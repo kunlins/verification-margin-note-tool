@@ -28,7 +28,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 HTML_FILE = ROOT / "margin_note_tool_v3_word_pdf.html"
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8765
+DEFAULT_PORT = 18765
 LAST_ACTIVITY = time.monotonic()
 
 
@@ -260,10 +260,12 @@ def port_available(host: str, port: int) -> bool:
 
 
 def choose_port(host: str, preferred: int) -> int:
-    for port in range(preferred, preferred + 50):
-        if port_available(host, port):
-            return port
-    raise RuntimeError("No available local port found.")
+    if port_available(host, preferred):
+        return preferred
+    raise RuntimeError(
+        f"Local translation port {preferred} is already in use. "
+        "Stop the conflicting program or choose another port."
+    )
 
 
 def start_idle_monitor(server: ThreadingHTTPServer, idle_timeout: int) -> None:
