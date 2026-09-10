@@ -696,8 +696,31 @@
     .added-note-row > td { background: rgba(255, 250, 240, 0.72); }
     .note-id-input { width: 76px; font-weight: 700; }
     .small-input { width: 54px; }
+    .multi-page-label {
+      display: inline-block;
+      min-width: 54px;
+      padding: 7px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fffaf3;
+      color: var(--brand-dark);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: center;
+    }
     .table-actions { display: flex; gap: 4px; flex-wrap: wrap; }
     .table-actions button { padding: 4px 6px; font-size: 11px; }
+    .continuation-status {
+      margin-top: 7px;
+      padding: 7px 8px;
+      border-left: 3px solid var(--gold);
+      background: #fff7e8;
+      color: var(--brand-dark);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
     .blackline-preview {
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -969,7 +992,7 @@
       </div>
       <div class="help">
         <span class="pill">Verification workflow</span><br />
-        单击正文抓取段落；拖拽可精确框选表格行或多段披露。遇到表格、图示或版面复杂内容，可切换“截图模式”后拖拽框选，Word 清单会直接嵌入截图。<br /><br />
+        单击正文抓取段落；拖拽可精确框选表格行或多段披露。遇到跨页段落，可先抓取第一部分，再在右侧点击“跨页续接”并框选下一页内容，Word 清单会合并为同一项。遇到表格、图示或版面复杂内容，可切换“截图模式”后拖拽框选，Word 清单会直接嵌入截图。<br /><br />
         翻译仅调用本机 127.0.0.1 服务，结果为初稿，可在导出前复核修订。
       </div>
     </aside>
@@ -999,7 +1022,8 @@
       checklistFileName: '',
       checklistRows: [],
       checklistTableIndex: -1,
-      insertAfterId: ''
+      insertAfterId: '',
+      continuationTargetUid: null
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1504,6 +1528,7 @@
       if (!['new', 'update'].includes(mode) || state.checklistMode === mode) return;
       if (!options.force && state.notes.length && !confirm('切换工作方式会清空当前尚未导出的 notes，是否继续？')) return;
       state.notes = [];
+      state.continuationTargetUid = null;
       state.counter = Number($('startNo').value || 1);
       state.checklistMode = mode;
       const isUpdate = mode === 'update';
@@ -1578,6 +1603,7 @@
         state.checklistTableIndex = tableInfo.tableIndex;
         state.insertAfterId = parsedRows[parsedRows.length - 1].id;
         state.notes = [];
+        state.continuationTargetUid = null;
 
         const firstParagraph = Array.from(documentXml.getElementsByTagNameNS(WORD_NS, 'body'))
           .flatMap(body => directWordChildren(body, 'p'))[0];
@@ -1626,6 +1652,63 @@
         .replace(/\s+/g, ' ')
         .replace(/\s+([,.;:!?%])/g, '$1')
         .trim();
+    }
+
+    function makeNoteSegment(pageNumber, center, selection, selectionMode, text) {
+      const pageData = state.pages.get(Number(pageNumber));
+      return {
+        page: Number(pageNumber),
+        yRatio: Math.max(0.01, Math.min(0.99, center.y / pageData.heightPx)),
+        xRatio: Math.max(0.01, Math.min(0.99, center.x / pageData.widthPx)),
+        bbox: selection && selection.bbox ? selection.bbox : null,
+        selectionMode,
+        text: cleanExtractedText(text || '')
+      };
+    }
+
+    function ensureNoteSegments(note) {
+      if (Array.isArray(note.segments) && note.segments.length) return note.segments;
+      note.segments = [{
+        page: Number(note.page || 1),
+        yRatio: Number(note.yRatio || 0.5),
+        xRatio: Number(note.xRatio || 0.5),
+        bbox: note.bbox || null,
+        selectionMode: note.selectionMode || 'paragraph',
+        text: cleanExtractedText(note.anchorText || '')
+      }];
+      return note.segments;
+    }
+
+    function primaryNoteSegment(note) {
+      return ensureNoteSegments(note)[0];
+    }
+
+    function syncPrimaryNoteSegment(note) {
+      const primary = primaryNoteSegment(note);
+      note.page = primary.page;
+      note.yRatio = primary.yRatio;
+      note.xRatio = primary.xRatio;
+      note.bbox = primary.bbox;
+    }
+
+    function mergeSegmentText(note) {
+      return ensureNoteSegments(note)
+        .map(segment => cleanExtractedText(segment.text || ''))
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+    }
+
+    function notePageLabel(note) {
+      const pages = [...new Set(ensureNoteSegments(note)
+        .map(segment => Number(segment.page))
+        .filter(page => Number.isFinite(page) && page > 0))]
+        .sort((a, b) => a - b);
+      return pages.join('–') || String(note.page || 1);
+    }
+
+    function isCrossPageNote(note) {
+      return ensureNoteSegments(note).length > 1;
     }
 
     async function checkLocalTranslator(showToast = true) {
@@ -1965,6 +2048,7 @@
       state.pdfArrayBuffer = await file.arrayBuffer();
       state.fileName = file.name || 'document.pdf';
       state.notes = [];
+      state.continuationTargetUid = null;
       state.pages = new Map();
       state.counter = Number($('startNo').value || 1);
       $('viewer').innerHTML = '';
@@ -2136,11 +2220,21 @@
     }
 
     function addNoteFromSelection(pageNumber, selection, selectionMode, fallbackX, fallbackY) {
-      if (state.checklistMode === 'update' && !state.checklistRows.length) {
+      const continuationNote = state.continuationTargetUid
+        ? state.notes.find(note => note.uid === state.continuationTargetUid)
+        : null;
+      if (state.continuationTargetUid && !continuationNote) state.continuationTargetUid = null;
+      if (continuationNote && (continuationNote.selectionMode === 'screenshot' || selectionMode === 'screenshot')) {
+        toast('截图 note 暂不支持跨页续接，请分别建立截图 note。');
+        state.continuationTargetUid = null;
+        updateTable(false);
+        return;
+      }
+      if (!continuationNote && state.checklistMode === 'update' && !state.checklistRows.length) {
         toast('请先上传现有 Word 验证清单，再抓取新增段落。');
         return;
       }
-      if (state.checklistMode === 'update' && !state.insertAfterId) {
+      if (!continuationNote && state.checklistMode === 'update' && !state.insertAfterId) {
         toast('请先选择新增项目要插入在哪个编号后面。');
         return;
       }
@@ -2148,15 +2242,40 @@
       const center = centerOfSelection(selection, fallbackX, fallbackY);
       const targetText = cleanExtractedText(selection && selection.text ? selection.text : '');
       const screenshot = selectionMode === 'screenshot' ? screenshotFromSelection(pageData, selection) : null;
+      if (continuationNote) {
+        if (!targetText) {
+          toast('未抓到文字，请重新框选或单击下一页的续接内容。');
+          return;
+        }
+        ensureNoteSegments(continuationNote).push(makeNoteSegment(pageNumber, center, selection, selectionMode, targetText));
+        syncPrimaryNoteSegment(continuationNote);
+        continuationNote.anchorText = mergeSegmentText(continuationNote);
+        continuationNote.chineseTranslation = '';
+        continuationNote.translationStatus = '';
+        if (continuationNote.highlightRanges) continuationNote.highlightRanges.chineseTranslation = [];
+        state.continuationTargetUid = null;
+        if (state.checklistMode === 'update') {
+          renderExistingChecklist();
+          updateChecklistSummary();
+        }
+        updateTable(false);
+        toast(`已将第 ${pageNumber} 页内容续接至 ${continuationNote.id}，Word 将合并为同一项。`);
+        checkLocalTranslator(false).then(ready => {
+          if (ready) translateNote(continuationNote, true);
+        });
+        return;
+      }
+      const segment = makeNoteSegment(pageNumber, center, selection, selectionMode, targetText);
       const note = {
         uid: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
         id: nextNoteId(),
         section: $('sectionName').value.trim(),
         page: pageNumber,
-        yRatio: Math.max(0.01, Math.min(0.99, center.y / pageData.heightPx)),
-        xRatio: Math.max(0.01, Math.min(0.99, center.x / pageData.widthPx)),
+        yRatio: segment.yRatio,
+        xRatio: segment.xRatio,
         selectionMode,
-        bbox: selection && selection.bbox ? selection.bbox : null,
+        bbox: segment.bbox,
+        segments: [segment],
         anchorText: selectionMode === 'screenshot' ? '' : targetText,
         chineseTranslation: '',
         highlightRanges: { anchorText: [], chineseTranslation: [] },
@@ -2191,44 +2310,52 @@
     }
 
     function sortNotes() {
-      state.notes.sort((a, b) => a.page !== b.page ? a.page - b.page : a.yRatio - b.yRatio);
+      state.notes.sort((a, b) => {
+        const left = primaryNoteSegment(a);
+        const right = primaryNoteSegment(b);
+        return left.page !== right.page ? left.page - right.page : left.yRatio - right.yRatio;
+      });
     }
 
     function renderNotes() {
       const noteColor = getSelectedNoteColor();
       for (const pageData of state.pages.values()) pageData.noteLayer.innerHTML = '';
       for (const note of state.notes) {
-        const pageData = state.pages.get(Number(note.page));
-        if (!pageData) continue;
-        const y = Math.max(6, Math.min(pageData.heightPx - 16, note.yRatio * pageData.heightPx));
-        const tag = document.createElement('div');
-        tag.className = 'note-tag';
-        tag.textContent = note.id;
-        tag.title = '拖动调整位置';
-        tag.style.top = (y - 7) + 'px';
-        tag.style.color = noteColor;
-        tag.dataset.uid = note.uid;
-        tag.addEventListener('mousedown', (event) => startDrag(event, note.uid));
-        tag.addEventListener('click', (event) => {
-          event.stopPropagation();
-          const row = document.querySelector('[data-row-uid="' + note.uid + '"]');
-          if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        ensureNoteSegments(note).forEach((segment, segmentIndex) => {
+          const pageData = state.pages.get(Number(segment.page));
+          if (!pageData) return;
+          const y = Math.max(6, Math.min(pageData.heightPx - 16, segment.yRatio * pageData.heightPx));
+          const tag = document.createElement('div');
+          tag.className = 'note-tag';
+          tag.textContent = note.id;
+          tag.title = isCrossPageNote(note) ? '跨页 note：拖动调整本页位置' : '拖动调整位置';
+          tag.style.top = (y - 7) + 'px';
+          tag.style.color = noteColor;
+          tag.dataset.uid = note.uid;
+          tag.addEventListener('mousedown', (event) => startDrag(event, note.uid, segmentIndex));
+          tag.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const row = document.querySelector('[data-row-uid="' + note.uid + '"]');
+            if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          });
+          const bar = document.createElement('div');
+          bar.className = 'note-bar';
+          bar.style.top = (y - 15) + 'px';
+          bar.style.background = noteColor;
+          pageData.noteLayer.appendChild(bar);
+          pageData.noteLayer.appendChild(tag);
         });
-        const bar = document.createElement('div');
-        bar.className = 'note-bar';
-        bar.style.top = (y - 15) + 'px';
-        bar.style.background = noteColor;
-        pageData.noteLayer.appendChild(bar);
-        pageData.noteLayer.appendChild(tag);
       }
     }
 
-    function startDrag(event, uid) {
+    function startDrag(event, uid, segmentIndex = 0) {
       event.preventDefault();
       event.stopPropagation();
       const note = state.notes.find(n => n.uid === uid);
       if (!note) return;
-      state.dragging = { uid, pageNumber: note.page };
+      const segment = ensureNoteSegments(note)[segmentIndex];
+      if (!segment) return;
+      state.dragging = { uid, segmentIndex, pageNumber: segment.page };
       document.addEventListener('mousemove', onDrag);
       document.addEventListener('mouseup', endDrag);
     }
@@ -2237,9 +2364,12 @@
       if (!state.dragging) return;
       const note = state.notes.find(n => n.uid === state.dragging.uid);
       const pageData = state.pages.get(Number(state.dragging.pageNumber));
+      const segment = note && ensureNoteSegments(note)[state.dragging.segmentIndex];
+      if (!note || !pageData || !segment) return;
       const rect = pageData.canvas.getBoundingClientRect();
       const yPx = (event.clientY - rect.top) * (pageData.heightPx / rect.height);
-      note.yRatio = Math.max(0.01, Math.min(0.99, yPx / pageData.heightPx));
+      segment.yRatio = Math.max(0.01, Math.min(0.99, yPx / pageData.heightPx));
+      syncPrimaryNoteSegment(note);
       renderNotes();
       updateTable(false);
     }
@@ -2391,10 +2521,13 @@
           <td>
             <input class="note-id-input" data-field="id" data-uid="${note.uid}" data-key="${note.uid}:id" value="${escapeHtml(note.id)}" />
             ${note.changeType === 'added' ? `<div style="margin-top:6px"><span class="change-badge">本次新增</span></div>` : ''}
+            ${isCrossPageNote(note) ? `<div style="margin-top:6px"><span class="change-badge">跨页内容 ${ensureNoteSegments(note).length} 段</span></div>` : ''}
             <div style="margin-top:6px;color:#6b7280">${escapeHtml(note.section || '')}</div>
             <div style="margin-top:4px;color:#9ca3af;font-size:11px">${escapeHtml(note.selectionMode || 'paragraph')}</div>
           </td>
-          <td><input class="small-input" data-field="page" data-uid="${note.uid}" data-key="${note.uid}:page" type="number" value="${note.page}" min="1" /></td>
+          <td>${isCrossPageNote(note)
+            ? `<div class="multi-page-label" title="该 note 的内容来自这些页面">${escapeHtml(notePageLabel(note))}</div>`
+            : `<input class="small-input" data-field="page" data-uid="${note.uid}" data-key="${note.uid}:page" type="number" value="${note.page}" min="1" />`}</td>
           <td>
             ${note.selectionMode === 'screenshot' ? `
               <label>招股书截图</label>
@@ -2439,10 +2572,12 @@
           <td>
             <div class="table-actions">
               <button data-action="goto" data-uid="${note.uid}">定位</button>
-              <button data-action="recapture" data-uid="${note.uid}">${note.selectionMode === 'screenshot' ? '重截图片' : '重抓整段'}</button>
+              <button data-action="recapture" data-uid="${note.uid}">${note.selectionMode === 'screenshot' ? '重截图片' : (isCrossPageNote(note) ? '重抓首段' : '重抓整段')}</button>
+              ${note.selectionMode === 'screenshot' ? '' : `<button data-action="continue" data-uid="${note.uid}">${state.continuationTargetUid === note.uid ? '取消续接' : '跨页续接'}</button>`}
               ${note.selectionMode === 'screenshot' ? '' : `<button data-action="translate" data-uid="${note.uid}">翻译</button>`}
               <button data-action="delete" data-uid="${note.uid}" class="danger">删除</button>
             </div>
+            ${state.continuationTargetUid === note.uid ? '<div class="continuation-status">正在等待下一次框选。请前往下一页，框选续接内容；系统会合并为同一编号。</div>' : ''}
           </td>`;
         body.appendChild(tr);
       }
@@ -2474,6 +2609,11 @@
       if (!note) return;
       if (field === 'page') note.page = Number(event.target.value || 1);
       else note[field] = event.target.value;
+      if (field === 'page') {
+        const primary = primaryNoteSegment(note);
+        primary.page = note.page;
+        syncPrimaryNoteSegment(note);
+      }
       if (field === 'anchorText') {
         note.translationStatus = '';
         if (note.highlightRanges) note.highlightRanges.anchorText = [];
@@ -2496,6 +2636,7 @@
       if (!note) return;
       if (action === 'delete') {
         state.notes = state.notes.filter(n => n.uid !== uid);
+        if (state.continuationTargetUid === uid) state.continuationTargetUid = null;
         if (state.checklistMode === 'update') {
           updateInsertPositionControls();
           renderExistingChecklist();
@@ -2508,6 +2649,22 @@
         toast('已删除该 note，并自动重新编号。');
         return;
       }
+      if (action === 'continue') {
+        if (state.continuationTargetUid === uid) {
+          state.continuationTargetUid = null;
+          updateTable(false);
+          toast('已取消跨页续接。');
+          return;
+        }
+        if (note.selectionMode === 'screenshot') {
+          toast('截图 note 暂不支持跨页续接，请分别建立截图 note。');
+          return;
+        }
+        state.continuationTargetUid = uid;
+        updateTable(false);
+        toast(`请前往下一页框选内容，系统会续接至 ${note.id}。`);
+        return;
+      }
       if (action === 'markHighlight') {
         markSelectedHighlight(note, event.target.dataset.highlightField);
       }
@@ -2517,11 +2674,12 @@
         toast('已清除该 note 的高亮。');
       }
       if (action === 'goto') {
-        const pageData = state.pages.get(Number(note.page));
+        const pageData = state.pages.get(Number(primaryNoteSegment(note).page));
         if (pageData) pageData.shell.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       if (action === 'recapture') {
-        const pageData = state.pages.get(Number(note.page));
+        const primary = primaryNoteSegment(note);
+        const pageData = state.pages.get(Number(primary.page));
         if (pageData) {
           if (note.selectionMode === 'screenshot') {
             const screenshot = screenshotFromSelection(pageData, { bbox: note.bbox });
@@ -2536,13 +2694,15 @@
             }
             return;
           }
-          const yPx = note.yRatio * pageData.heightPx;
-          const xPx = note.xRatio * pageData.widthPx;
+          const yPx = primary.yRatio * pageData.heightPx;
+          const xPx = primary.xRatio * pageData.widthPx;
           const selection = paragraphSelectionAt(pageData, xPx, yPx);
-          note.anchorText = selection.text || note.anchorText || '';
+          primary.text = cleanExtractedText(selection.text || primary.text || note.anchorText || '');
+          primary.bbox = selection.bbox || primary.bbox || null;
+          note.anchorText = mergeSegmentText(note) || note.anchorText || '';
           note.highlightRanges = { anchorText: [], chineseTranslation: [] };
           note.selectionMode = 'paragraph';
-          note.bbox = selection.bbox || note.bbox || null;
+          syncPrimaryNoteSegment(note);
           note.screenshotDataUrl = '';
           note.screenshotWidth = 0;
           note.screenshotHeight = 0;
@@ -2592,14 +2752,16 @@
       const noteColor = hexToPdfRgb(getSelectedNoteColor());
       const pdfNoteColor = rgb(noteColor.r, noteColor.g, noteColor.b);
       for (const note of state.notes) {
-        const pageIndex = Number(note.page) - 1;
-        if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
-        const pdfPage = pdfDoc.getPage(pageIndex);
-        const size = pdfPage.getSize();
-        const y = size.height - (note.yRatio * size.height);
-        const safeY = Math.max(8, Math.min(size.height - 8, y));
-        pdfPage.drawText(note.id, { x: marginX, y: safeY - fontSize / 2, size: fontSize, font, color: pdfNoteColor });
-        pdfPage.drawLine({ start: { x: marginX + 46, y: safeY - 14 }, end: { x: marginX + 46, y: safeY + 14 }, thickness: 1.2, color: pdfNoteColor });
+        for (const segment of ensureNoteSegments(note)) {
+          const pageIndex = Number(segment.page) - 1;
+          if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
+          const pdfPage = pdfDoc.getPage(pageIndex);
+          const size = pdfPage.getSize();
+          const y = size.height - (segment.yRatio * size.height);
+          const safeY = Math.max(8, Math.min(size.height - 8, y));
+          pdfPage.drawText(note.id, { x: marginX, y: safeY - fontSize / 2, size: fontSize, font, color: pdfNoteColor });
+          pdfPage.drawLine({ start: { x: marginX + 46, y: safeY - 14 }, end: { x: marginX + 46, y: safeY + 14 }, thickness: 1.2, color: pdfNoteColor });
+        }
       }
       const bytes = await pdfDoc.save();
       downloadBlob(new Blob([bytes], { type: 'application/pdf' }), baseName(state.fileName) + '_margin_notes.pdf');
@@ -3030,6 +3192,7 @@ ${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://sc
       if (state.checklistMode === 'update') {
         if (!confirm('确认清空本次新增内容和删除标记？原 Word 清单不会被修改。')) return;
         state.notes = [];
+        state.continuationTargetUid = null;
         state.checklistRows.forEach(row => { row.deleted = false; });
         updateInsertPositionControls();
         renderExistingChecklist();
@@ -3039,6 +3202,7 @@ ${images.map(image => `  <Relationship Id="rIdImg${image.index}" Type="http://sc
       }
       if (!confirm('确认清空全部 notes？')) return;
       state.notes = [];
+      state.continuationTargetUid = null;
       state.counter = Number($('startNo').value || 1);
       updateTable();
     });
